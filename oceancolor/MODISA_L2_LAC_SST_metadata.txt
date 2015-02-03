@@ -20,6 +20,64 @@ A YYYY DDD HH MM SS.L2_LAC_SST.bz2
 
 
 
+# Subdatasets of xxx.L2_LAC_SST.hdf:
+#-----------------------------------------------------
+  layer Number 1 : longitude (32-bit floating-point)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":11
+    
+  layer Number 2 : latitude (32-bit floating-point)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":12
+    
+  layer Number 3 : SST (16-bit integer)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":15
+    
+  Layer Number 4: qual_sst (8-bit integer)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":16
+    
+  Layer Number 5 : bias_sst (8-bit unsigned integer)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":17
+    
+  Layer Number 6 : stdv_sst (8-bit unsigned integer)
+    DF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":18
+    
+  Layer Number 7 : sstref (16-bit integer)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":19
+    
+  Layer Number 8 : l2_flags (32-bit integer)
+    HDF4_SDS:UNKNOWN:"/Users/neel/Downloads/A2014001000000.L2_LAC_SST":20
+
+
+
+
+# Minimum pixel quality level to use, one of:
+# ---------------------------------------------------
+
+0 - best
+1 - good (the default)
+2 - questionable
+3 - bad
+4 - failed or SST not computed
+
+All pixels with a quality level that is worse than the minimum will be masked and excluded from the output.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Long-wave SST Algorithm (SST)
 #--------------------------------------------
 source: http://oceancolor.gsfc.nasa.gov/DOCS/modis_sst/
