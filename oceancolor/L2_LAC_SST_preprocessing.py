@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# Riazuddin Kawsar
+# 5th Feb 2015
+
+
 import os, sys, time, numpy, fnmatch
 from osgeo import gdal
 from osgeo.gdalconst import *
