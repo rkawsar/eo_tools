@@ -7,6 +7,12 @@ from osgeo import osr
 import matplotlib.pyplot as plt
 import numpy as np
 
+import os
+from osgeo import gdal
+from osgeo import osr
+import matplotlib.pyplot as plt
+import numpy as np
+
 # def array2raster(newRasterfn,rasterOrigin,pixelWidth,pixelHeight,array):
 #   cols = array.shape[1]
 #   rows = array.shape[0]
@@ -30,28 +36,68 @@ hdf_file = '/media/Num/eo_tools/testData/raster/A2014001000000.L2_LAC_SST'
 
 
 
+
+
+
 # function to generate nodecode from lattitude and longitude
 def code_node_code(lat, lon):
+
+    if lon > 180 or lon < -180:
+        print ' Longitude out of range ...'
+        sys.exit(1)
+
+    if lat > 90 or lat < -90:
+        print ' latitude out of range ...'
+        sys.exit(1)
+
+    lat_p = "%02d" % (abs(lat))
+    lat_t = format(lat, '.3f')
+    lat_l = str(lat_t).split(".")[1]
+    lon_p = "%03d" % (abs(lon))
+    lon_t = format(lon, '.3f')
+    lon_l = str(lon_t).split(".")[1]
+   
+
+    if lat > 0:
+        lat_code = 'N' + lat_p + '.' + lat_l
+    elif lat == 0:
+        lat_code = 'N' + lat_p + '.' + lat_l
+    else:
+        lat_code = 'S' + lat_p + '.' + lat_l
+
+    if lon > 0:
+        lon_code = 'E' + lon_p + '.' + lon_l
+    elif lon == 0:
+        lon_code = 'E' + lon_p + '.' + lon_l
+    else:
+        lon_code = 'W' + lon_p + '.' + lon_l
+
+    node_code =  lon_code + '_' +  lat_code
+
+    print node_code
+    return node_code
   
-  lat_p = "%03d" % (abs(lat))
-  lat_l = str(lat).split(".")[1]
-  lon_p = "%03d" % (abs(lon))
-  lon_l = str(lon).split(".")[1]
 
-  if lat > 0:
-    lat_code = 'W' + lat_p + '.' + lat_l
-  else:
-    lat_code = 'E' + lat_p + '.' + lat_l
 
-  if lon < 0:
-    lon_code = 'N' + lon_p + '.' + lon_l
-  else:
-    lon_code = 'S' + lon_p + '.' + lon_l
 
-  node_code = lat_code + '_' + lon_code
-  print node_code
-  return node_code
-  
+
+# function to generate nodecode from lattitude and longitude
+def decode_node_code(node_code):
+
+    if node_code[9:10] =='N':
+        lat = float(node_code[10:16])    
+    else:
+        lat = '-' + node_code[10:16]
+        lat = float(lat)
+
+    if node_code[:1] =='E':
+        lon = float(node_code[1:8])
+    else:
+        lon = '-' + node_code[1:8]
+        lon = float(lon)
+
+    print lat, lon
+    return lat, lon
 
 
 
@@ -89,8 +135,8 @@ def return_sst_band_arrays(hdf_file):
   lat = (round(float(metadata['Scene Center Latitude']), 3))
   lon = (round(float(metadata['Scene Center Longitude']), 3))
   node_code = code_node_code(lat, lon)
-  out_dataset_name = ff_name + '_' + node_code + '_' + DayOrNight
-  print out_dataset_name
+  out_dataset_name = ff_name + '_' + DayOrNight + '_' + node_code 
+  print lat, lon, out_dataset_name
   
 
   # Scaling and NaN values
