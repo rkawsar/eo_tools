@@ -9,26 +9,9 @@ from osgeo import osr
 import matplotlib.pyplot as plt
 import numpy as np
 
-# def array2raster(newRasterfn,rasterOrigin,pixelWidth,pixelHeight,array):
-#   cols = array.shape[1]
-#   rows = array.shape[0]
-#   originX = rasterOrigin[0]
-#   originY = rasterOrigin[1]
-#   driver = gdal.GetDriverByName('GTiff')
-#   outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Byte)
-#   outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
-#   outband = outRaster.GetRasterBand(1)
-#   outband.WriteArray(array)
-#   outRasterSRS = osr.SpatialReference()
-#   outRasterSRS.ImportFromEPSG(4326)
-#   outRaster.SetProjection(outRasterSRS.ExportToWkt())
-#   outband.FlushCache()
-
-
 
 hdf_file = '/media/Num/eo_tools/testData/raster/A2014001000000.L2_LAC_SST'
 out_sst = '/media/Num/eo_tools/testData/raster/sst.tif'
-
 
 
 # function to generate nodecode from lattitude and longitude
@@ -184,8 +167,6 @@ def output_file(output_name,output_array):
     wgs84.ImportFromEPSG(4326)
     outDataset.SetProjection(wgs84.ExportToWkt())
     outBand.FlushCache()
-
-
 
 
 sst, quality, geoTransform, ncols, nrows = return_sst_band_arrays(hdf_file)
