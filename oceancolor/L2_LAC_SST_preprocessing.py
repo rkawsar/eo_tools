@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 # Riazuddin Kawsar
 # 5th Feb 2015
-import os
-from osgeo import gdal
-from osgeo import osr
-import matplotlib.pyplot as plt
-import numpy as np
+
 
 import os
 from osgeo import gdal
@@ -30,12 +26,8 @@ import numpy as np
 
 
 
-
 hdf_file = '/media/Num/eo_tools/testData/raster/A2014001000000.L2_LAC_SST'
-
-
-
-
+out_sst = '/media/Num/eo_tools/testData/raster/sst.tif'
 
 
 
@@ -56,7 +48,6 @@ def code_node_code(lat, lon):
     lon_p = "%03d" % (abs(lon))
     lon_t = format(lon, '.3f')
     lon_l = str(lon_t).split(".")[1]
-   
 
     if lat > 0:
         lat_code = 'N' + lat_p + '.' + lat_l
@@ -74,10 +65,9 @@ def code_node_code(lat, lon):
 
     node_code =  lon_code + '_' +  lat_code
 
-    print node_code
+    #print node_code
     return node_code
   
-
 
 
 
@@ -102,6 +92,7 @@ def decode_node_code(node_code):
 
 
 
+
 def return_sst_band_arrays(hdf_file):
   
   ff_name = os.path.basename(hdf_file)
@@ -121,6 +112,10 @@ def return_sst_band_arrays(hdf_file):
   ds_sst = gdal.Open(subdatasets[2][0])
   ds_quality = gdal.Open(subdatasets[3][0])
 
+  geo_transform = ds_sst.GetGeoTransform ()
+  print geo_transform
+  print ds_sst.RasterXSize, ds_sst.RasterYSize
+
 
   print 'coverting layers into numpy arrays ...'
   longs = ds_lon.GetRasterBand(1).ReadAsArray()
@@ -136,87 +131,65 @@ def return_sst_band_arrays(hdf_file):
   lon = (round(float(metadata['Scene Center Longitude']), 3))
   node_code = code_node_code(lat, lon)
   out_dataset_name = ff_name + '_' + DayOrNight + '_' + node_code 
-  print lat, lon, out_dataset_name
+  print out_dataset_name
   
 
-  # Scaling and NaN values
+  print 'Scaling and adjusting NaN values...'
   sst_nan = float(ds_sst.GetMetadataItem('bad_value_scaled'))
   sst_intercept = float(ds_sst.GetMetadataItem('intercept'))
   sst_slope = float(ds_sst.GetMetadataItem('slope'))
-  # Create mask
+
+  # Create NoData value mask
   mask = sst == sst_nan
+  qual_mask_4 = quality == 4 # 0 = best, 1 = good, 2 = questionable quality
+  qual_mask_3 = quality == 3
+
   # Scale values
   sst = sst_intercept + sst_slope * sst
+  
   # Apply mask
   sst[mask] = np.nan
+  sst[qual_mask_4] = np.nan
+  sst[qual_mask_3] = np.nan
+  #sst[np.isnan(sst)] = -9999
 
-  # free datasets
+  ul_x = longs.min()
+  ul_y = lats.max()
+  #geotransform = (upperleft_x, pixelsize, rotation, upperleft_y, pixelsize, rotation)
+  geoTransform = (ul_x, 0.011, 0, ul_y, 0, -0.011)
+  ncols = sst.shape[1]
+  nrows = sst.shape[0]
+
   ds_lon, ds_lat, ds_sst, ds_quality = None, None, None, None
+  mask, qual_mask_4, qual_mask_3 = None, None, None
 
-  return lats, longs, sst, quality
-
-
-
+  return sst, quality, geoTransform, ncols, nrows
 
 
 
-lats, longs, sst, quality = return_sst_band_arrays(hdf_file)
-gdal_dtype = gdal.GDT_Float32
-out_fn = '/media/Num/eo_tools/testData/raster/foo.tif'
-driver_name = 'GTiff'
-resolution_out = 1000
-ncols = sst.shape[1]
-nrows = sst.shape[0]
-n_px = ncols * nrows
-ul_x = longs.min()
-ul_y = lats.max()
+
+def output_file(output_name,output_array):
+  
+    driver = gdal.GetDriverByName("GTiff")
+    outDataset = driver.Create(output_name, ncols, nrows, 1, gdal.GDT_Float32)
+    
+    outBand = outDataset.GetRasterBand(1)
+    outBand.WriteArray(output_array,0,0)
+    
+    outBand.SetNoDataValue(np.nan)
+
+    outDataset.SetGeoTransform(geoTransform)
+
+    wgs84 = osr.SpatialReference()
+    wgs84.ImportFromEPSG(4326)
+    outDataset.SetProjection(wgs84.ExportToWkt())
+    outBand.FlushCache()
 
 
 
-# Define projections (from and to)
-wgs84 = osr.SpatialReference()
-wgs84.ImportFromEPSG(4326)
-polar = osr.SpatialReference()
-polar.ImportFromEPSG(3031)
 
-#
-# ## Create SST daatset in memory
-# mem = gdal.GetDriverByName( 'MEM' )
-# ds_sst = mem.Create('', ncols, nrows, 1, gdal_dtype)
-# ds_sst.SetGeoTransform( (ul_x, 0.01, 0, ul_y, 0, 0.01) )
-# # Select output band
-# band_sst = ds_sst.GetRasterBand(1)
-# # Write array into output band
-# band_sst.WriteArray(sst)
-# # Set NoData value
-# band_sst.SetNoDataValue(np.nan)
-# # Set projection of output raster
-# ds_sst.SetProjection( wgs84.ExportToWkt() )
-#
-# ## REPROJECT DATA TO EPSG:3031
-# tx = osr.CoordinateTransformation (wgs84, polar)
-#
-# # GeoTransform vector of SST data
-# gt = [ float(x) for x in (ul_x, 0.01, 0, ul_y, 0, 0.01) ]
-# # Work out the boundaries of the new dataset in the target projection
-# (ulx, uly, ulz ) = tx.TransformPoint( gt[0], gt[3] )
-# (lrx, lry, lrz ) = tx.TransformPoint( gt[0] + gt[1] * ncols, gt[3] + gt[5] * nrows )
-#
-# # Now, we create an in-memory raster
-# driver = gdal.GetDriverByName( driver_name )
-# # The size of the raster is given the new projection and pixel spacing
-# # Using the values we calculated above. Also, setting it to store one band
-# # and to use Float32 data type.
-# ds_out = driver.Create(out_fn, int( abs(lrx - ulx) / resolution_out ), int( abs(uly - lry) / resolution_out ), 1, gdal_dtype )
-# # Calculate the new geotransform
-# out_gt = ( ulx, resolution_out, gt[2], uly, gt[4], -resolution_out )
-# # Set the geotransform
-# ds_out.SetGeoTransform( out_gt )
-# ds_out.SetProjection ( polar.ExportToWkt() )
-# # Perform the projection/resampling
-# res = gdal.ReprojectImage( ds_sst, ds_out, wgs84.ExportToWkt(), polar.ExportToWkt(), gdal.GRA_Bilinear )
-#
-
+sst, quality, geoTransform, ncols, nrows = return_sst_band_arrays(hdf_file)
+output_file(out_sst, sst)
 
 
 
@@ -224,40 +197,4 @@ polar.ImportFromEPSG(3031)
 
 imgplot2 = plt.imshow(quality)
 plt.show()
-'''
-
-def output_file(output_name,output_array):
-    format = "GTiff"
-    driver = gdal.GetDriverByName( format )
-    outDataset = driver.Create(output_name, ncols, nrows, 1, GDT_Int16)
-    outBand = outDataset.GetRasterBand(1)
-    outBand.WriteArray(output_array,0,0)
-    outBand.FlushCache()
-    outBand.SetNoDataValue(0)
-    out.SetGeoTransform( (ul_x, 0.01, 0, ul_y, 0, 0.01) )
-    out.SetProjection( wgs84.ExportToWkt() )
-
-
-#output_file(out_fn, sst)
-
-'''
-## WRITE FILE
-
-# Get driver
-driver = gdal.GetDriverByName('GTiff')
-# Create output raster file
-out = driver.Create(out_fn, ncols, nrows, 1, gdal_dtype)
-# Set the affine transformation coefficients
-print ul_x, ul_y, ncols, nrows
-out.SetGeoTransform( (ul_x, 0.01, 0, ul_y, 0, 0.01) )
-# Select output band
-outband = out.GetRasterBand(1)
-# Write array into output band
-outband.WriteArray(sst)
-# Set NoData value
-outband.SetNoDataValue(np.nan)
-# Set projection of output raster
-out.SetProjection( wgs84.ExportToWkt() )
-# Flush cache
-outband.FlushCache()
 '''
