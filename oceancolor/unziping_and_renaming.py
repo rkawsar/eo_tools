@@ -13,7 +13,7 @@ input_dir = '/media/Num/wrk_dir/oceancolour/L2_LAC_SST'
 for(dirpath,dirnames,files)in os.walk(input_dir):
     
     for file in files:
-        if fnmatch.fnmatch(file,'*.bz2'):
+        if fnmatch.fnmatch(file,'*SST.bz2'):
             filepath = os.path.join(dirpath,file)
             print filepath
             
