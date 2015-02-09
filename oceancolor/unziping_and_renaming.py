@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # Riazuddin Kawsar
-# 5th Feb 2015
+# 9th Feb 2015
 
 # unzip the downlodeded file and rename the raster files as per 'SST' and 'NSST'
+# and removing the *.bz2 files
 
 import os, fnmatch, bz2, fnmatch
 from osgeo import gdal
