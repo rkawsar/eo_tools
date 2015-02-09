@@ -10,6 +10,7 @@
 # rowgroup=270 
 # qual_prod=qual_sst
 # qual_max=2
+# resolve=H
 # verbose=1
 
 l2bin_parfile="/media/Num/eo_tools/oceancolour/l2bin_sst_default_parfile.par"
