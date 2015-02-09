@@ -16,7 +16,7 @@
 l2bin_parfile="/media/Num/eo_tools/oceancolour/l2bin_sst_default_parfile.par"
 
 # in_file="/media/Num/eo_tools/testData/raster/A2014001000000.L2_LAC_SST"
-in_dir="/media/Num/eo_tools/testData/raster/"
+in_dir="/media/Num/eo_tools/testData/raster"
 
 #Define variables read in from master_script.sh.
 spatial_bin=H #(H=0.5, 1, 2, 4, 9, or 36)
