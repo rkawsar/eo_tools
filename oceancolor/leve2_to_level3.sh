@@ -1,16 +1,6 @@
 #!/bin/bash
 
 
-#This script spatially and temporally bins MODIS (Aqua and Terra) and 
-#SeaWiFS Level-2 files.
-
-
-echo; echo; echo '***** START LEVEL-2 TO LEVEL-3 PROCESSING *****'
-
-
-###########################################################################
-###########################################################################
-#Specify the l2bin and l3bin parameter files.
 L2BIN_PARFILE='l2bin_default_parfile'
 L3BIN_PARFILE='l3bin_default_parfile'
 ###########################################################################
