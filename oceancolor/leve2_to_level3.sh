@@ -1,6 +1,7 @@
 #!/bin/bash
 # Riazuddin kawsar
 # 9th Feb 2015
+# about l2bin and l3bin details : http://oceancolor.gsfc.nasa.gov/forum/oceancolor/topic_show.pl?tid=2931
 
 
 ## l2bin_sst_default_parfile.par used for both l2bin and l3bin 
