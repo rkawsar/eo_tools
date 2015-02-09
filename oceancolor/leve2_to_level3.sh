@@ -23,7 +23,7 @@ sensor="A"
 year="2014"
 
 
-#Spatially bin the Level-2 files using the SeaDAS script "l2bin".
+#Spatially bin the L2_LAC_SST files "l2bin".
 for files in $in_dir/A*.L2_LAC_SST
 do
 base=$(echo $files | awk -F. '{ print $1 }')
@@ -32,7 +32,7 @@ l2bin infile=$files ofile=$l2_out_file parfile=$l2bin_parfile
 done
 
 
-#Temporally bin the "*.L2b" files using the SeaDAS script l3bin.
+#Temporally bin the "*.L2b" files using l3bin.
 pwidth=3
 for i in {1..365}
 do
