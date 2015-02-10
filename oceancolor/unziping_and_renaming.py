@@ -29,6 +29,8 @@ for(dirpath,dirnames,files)in os.walk(input_dir):
 
             if DayOrNight =='N':
                 new_newfilepath = newfilepath + 'NSST'
+            elif DayOrNight =='M':
+                new_newfilepath = newfilepath + 'MSST'
             else:
                 new_newfilepath = newfilepath + 'SST'
             print new_newfilepath
