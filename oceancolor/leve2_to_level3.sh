@@ -5,7 +5,7 @@
 # this script works only for DAYTIME daily SST (i.e., xxxxxxxxxxxx.L2_LAC_SST)
 
 
-## l2bin_sst_default_parfile.par used for both l2bin and l3bin 
+## l2bin_sst_default_parfile.par used for l2bin 
 # flaguse=LAND,HISOLZ
 # l3bprod=sst
 # prodtype=regional
@@ -15,7 +15,21 @@
 # resolve=H
 # verbose=1
 
+## l2bin_sst_default_parfile.par used for l3bin 
+# noext=1
+# verbose=1
+# meas=1
+# loneast=+180
+# lonwest=-180
+# latnorth=+90
+# latsouth=-90
+# projection=SIN
+# resolution=1km
+
+
+
 l2bin_parfile="/media/Num/eo_tools/oceancolour/l2bin_sst_default_parfile.par"
+l3bin_parfile="/media/Num/eo_tools/bin/oceancolor/l3bin_modis_sst_default.par"
 
 # in_file="/media/Num/eo_tools/testData/raster/A2014001000000.L2_LAC_SST"
 in_dir="/media/Num/eo_tools/testData/raster"
@@ -42,7 +56,7 @@ do
 doy=$(printf "%0*d\n" $pwidth $i)
 ls $in_dir/${sensor}${year}${doy}*.L2b | tee -a $in_dir/l3bin_DAYlist.txt
 l3_out_file=${sensor}${year}${doy}_${spatial_bin}_${doy}.L3
-l3bin in=$in_dir/l3bin_DAYlist.txt out=$l3_out_file parfile=$l2bin_parfile
+l3bin in=$in_dir/l3bin_DAYlist.txt out=$l3_out_file parfile=$l3bin_parfile
 rm $in_dir/l3bin_DAYlist.txt
 done
 
