@@ -15,17 +15,9 @@
 # resolve=H
 # verbose=1
 
-## l2bin_sst_default_parfile.par used for l3bin 
+## l3bin_sst_default_parfile.par used for l3bin 
 # noext=1
 # verbose=1
-# meas=1
-# loneast=+180
-# lonwest=-180
-# latnorth=+90
-# latsouth=-90
-# projection=SIN
-# resolution=1km
-
 
 
 l2bin_parfile="/media/Num/eo_tools/oceancolour/l2bin_sst_default_parfile.par"
