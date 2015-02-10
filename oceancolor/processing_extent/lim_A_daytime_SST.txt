@@ -1,5 +1,4 @@
-working for limit [n, w, e, s] [-90, -180, -60, 90]
-16071 16191
+### working for limit [n, w, e, s] [-90, -180, -60, 90]
 A2014002125500.L2_LAC_SST.bz2
 A2014002045000.L2_LAC_SST.bz2
 A2014002031000.L2_LAC_SST.bz2
