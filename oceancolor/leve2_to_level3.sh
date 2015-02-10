@@ -47,7 +47,7 @@ for i in {1..365}
 do
 doy=$(printf "%0*d\n" $pwidth $i)
 ls $in_dir/${sensor}${year}${doy}*.L2b | tee -a $in_dir/l3bin_DAYlist.txt
-l3_out_file=${sensor}${year}${doy}_${spatial_bin}_${doy}.L3
+l3_out_file=$in_dir/${sensor}${year}${doy}_${spatial_bin}_${doy}.L3
 l3bin in=$in_dir/l3bin_DAYlist.txt out=$l3_out_file parfile=$l3bin_parfile
 rm $in_dir/l3bin_DAYlist.txt
 done
