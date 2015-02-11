@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# interpolation source:
+# http://gis.stackexchange.com/questions/7611/bilinear-interpolation-of-point-data-on-a-raster-in-python
 
 import os
 from osgeo import gdal
@@ -19,11 +21,12 @@ ds_sst = gdal.Open(subdatasets[2][0])
 
 geotransform = ds_sst.GetGeoTransform ()
 
-ncols = ds_sst.RasterXSize
-nrows = ds_sst.RasterYSize
+nx = ds_sst.RasterXSize # ncols
+ny = ds_sst.RasterYSize # nrows
 xmin = float(ds_sst.GetMetadataItem('geospatial_lon_min'))
 ymin = float(ds_sst.GetMetadataItem('geospatial_lat_min'))
 xmax = float(ds_sst.GetMetadataItem('geospatial_lon_max'))
 ymax = float(ds_sst.GetMetadataItem('geospatial_lat_max'))
+
 
 
