@@ -19,8 +19,6 @@ hdf_file = gdal.Open(hdf_file,gdal.GA_ReadOnly)
 subdatasets = hdf_file.GetSubDatasets()
 ds_sst = gdal.Open(subdatasets[2][0])
 
-geotransform = ds_sst.GetGeoTransform ()
-
 nx = ds_sst.RasterXSize # ncols
 ny = ds_sst.RasterYSize # nrows
 xmin = float(ds_sst.GetMetadataItem('geospatial_lon_min'))
@@ -28,5 +26,10 @@ ymin = float(ds_sst.GetMetadataItem('geospatial_lat_min'))
 xmax = float(ds_sst.GetMetadataItem('geospatial_lon_max'))
 ymax = float(ds_sst.GetMetadataItem('geospatial_lat_max'))
 
+xres=(xmax-xmin)/float(nx) # ncol_new = (xmax - xmin) / float(0.11)
+yres=(ymax-ymin)/float(ny) # nrow_new = (ymax - ymin) / float(0.11)
 
-
+geotransform = ds_sst.GetGeoTransform ()
+print geotransform
+new_geotransform=(xmin,xres,0,ymax,0, -yres)
+print geotransform
