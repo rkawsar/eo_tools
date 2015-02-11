@@ -1,25 +1,37 @@
 #!/usr/bin/env python
 
 # python script to download SST data for the year 2012
-import re
-import os
+import re, os, csv
 import urllib, urllib2
 import datetime, time
+
 
 # creating limit to reduce the data binning size [n, w, e, s]
 lim_A = [ -90, -180, -60, 90 ]
 lim_B = [ -90, -59, 80, 90 ]
 lim_C = [ -90, 79, 180, 90 ]
 
-print 'working for limit [n, w, e, s] ' + str(lim_A)
 
-file = '/home/neel/test.txt'
+
+txtfile = '/media/Num/wrk_dir/oceancolour/processing_extents/lim_A_daytime_SST.csv'
+# OUT_DIR = "/media/Num/eo_tools/testData/raster/"
+
+
+
+lim = lim_A
+output_list = []
+list_out = ['lim', 'filename']
+output_list.append(list_out)
+print 'working for limit [n, w, e, s] ' + str(lim)
+
+
+
 pram = 'SST'
-OUT_DIR = "C:\R.Kawsar\WORKSPACE\Data\oceancolour"
-
 year = '2014'
 day = '01'
 month = '01'
+
+
 
 basetime= time.time()
 user_TInput = month + '/' + day + '/' + year[2:]
@@ -52,6 +64,13 @@ URL_FIND = "http://oceancolor.gsfc.nasa.gov/cgi/browse.pl/"
 URL_GET = "http://oceandata.sci.gsfc.nasa.gov/cgi/getfile/%s"
 PATT = "A\d*\.L2_LAC_" + pram
 
+
+def write_output(out_file, output_list):
+    with open(out_file, "wb") as f:
+        writer = csv.writer(f)
+        writer.writerows(output_list)
+
+
 def http_post(url, args):
     data = urllib.urlencode(args)
     req = urllib2.Request(url, data)
@@ -64,10 +83,10 @@ if __name__ == "__main__":
         
         INPUTS[ 'day' ] = i
         INPUTS[ 'dnm' ] = 'D'
-        INPUTS[ 'n' ] = lim_A[0]
-        INPUTS[ 'w' ] = lim_A[1]
-        INPUTS[ 'e' ] = lim_A[2]
-        INPUTS[ 's' ] = lim_A[3]
+        INPUTS[ 'n' ] = lim[0]
+        INPUTS[ 'w' ] = lim[1]
+        INPUTS[ 'e' ] = lim[2]
+        INPUTS[ 's' ] = lim[3]
 
         page = http_post(URL_FIND, INPUTS)
         scenes = re.findall(PATT, page)
@@ -75,10 +94,11 @@ if __name__ == "__main__":
         
         for scene in scenes:
             filename = scene + ".bz2"
-            out = open(file, "w") 
-            out.write(filename + '\n')
-            out.close()
+            list_out = [lim, filename]
+            output_list.append(list_out)
             print filename
+    write_output(txtfile, output_list)
+    
             #outpath = os.path.join(OUT_DIR, filename)
             #url = URL_GET % filename
             #urllib.urlretrieve(url, outpath)
