@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 # python script to download SST data for the year 2012
 import re
 import os
@@ -14,7 +13,7 @@ lim_C = [ -90, 79, 180, 90 ]
 
 print 'working for limit [n, w, e, s] ' + str(lim_A)
 
-
+file = '/home/neel/test.txt'
 pram = 'SST'
 OUT_DIR = "C:\R.Kawsar\WORKSPACE\Data\oceancolour"
 
@@ -27,7 +26,7 @@ user_TInput = month + '/' + day + '/' + year[2:]
 d1 = datetime.datetime.strptime(user_TInput, "%m/%d/%y")
 d0 = datetime.datetime.strptime('01/01/70', "%m/%d/%y")
 start_day =(d1 - d0).days
-end_day = start_day + 10
+end_day = start_day + 2
 
 print start_day, end_day
 
@@ -76,7 +75,11 @@ if __name__ == "__main__":
         
         for scene in scenes:
             filename = scene + ".bz2"
+            out = open(file, "w") 
+            out.write(filename + '\n')
+            out.close()
             print filename
             #outpath = os.path.join(OUT_DIR, filename)
             #url = URL_GET % filename
             #urllib.urlretrieve(url, outpath)
+
