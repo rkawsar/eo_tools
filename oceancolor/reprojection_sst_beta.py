@@ -29,6 +29,13 @@ ymax = float(ds_sst.GetMetadataItem('geospatial_lat_max'))
 xres=(xmax-xmin)/float(nx) # ncol_new = (xmax - xmin) / float(0.11)
 yres=(ymax-ymin)/float(ny) # nrow_new = (ymax - ymin) / float(0.11)
 
+new_nx = (xmax-xmin)/0.011
+new_ny = (ymax-ymin)/0.011 
+
+print nx, ny
+print new_nx, new_ny
+
+yres=(ymax-ymin)/float(ny)
 geotransform = ds_sst.GetGeoTransform ()
 print geotransform
 new_geotransform=(xmin,xres,0,ymax,0, -yres)
