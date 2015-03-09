@@ -7,7 +7,7 @@
 # bbox = min Longitude , min Latitude , max Longitude , max Latitude
 # OR bbbox = south Latitude, north Latitude, west Longitude, east Longitude
 lim_euro_coast = [ -26, 30, 57, 72 ]
-['-80.42581177', '-27.22232819', '-54.37218857', '-6.238492012']
+# ['-80.42581177', '-27.22232819', '-54.37218857', '-6.238492012']
 
 
 import os, fnmatch, bz2, fnmatch
@@ -17,6 +17,7 @@ in_dir = '/media/Arc/oceancolor_data/L2_sst_untar'
 euro_coasts_dir = '/media/Arc/oceancolor_data/euro_coasts'
 
 
+# check if the image intersect with the bounding box limit
 def check_bbox_intersect(bbox1, bbox2):
      xmin1, xmax1, ymin1, ymax1 = float(bbox1[0]), float(bbox1[1]), float(bbox1[2]), float(bbox1[3])
      xmin2, xmax2, ymin2, ymax2 = float(bbox2[0]), float(bbox2[1]), float(bbox2[2]), float(bbox2[3])
