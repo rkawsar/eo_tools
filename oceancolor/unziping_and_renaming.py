@@ -9,7 +9,7 @@ import os, fnmatch, bz2, fnmatch
 from osgeo import gdal
 
 
-input_dir = '/media/Num/wrk_dir/oceancolour/L2_LAC_SST'
+input_dir = '/media/Arc/oceancolor_data/L2_sst_untar'
 
 for(dirpath,dirnames,files)in os.walk(input_dir):
     
