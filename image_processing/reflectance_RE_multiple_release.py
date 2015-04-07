@@ -5,7 +5,6 @@
 # email: r.kawsar@spatial-business-integration
 # date: 21st july 2014
 
-
 ##### RE bands and indexes
 #Band Nr 1 = Blue
 #Band Nr 2 = Green
@@ -34,13 +33,14 @@ sub_folder_name = sys.argv[1]
 
 
 # secondary input
-main_folder = 'SBCP_BASF'
+main_folder = sys.argv[2]
+# main_folder = '150301_BASF_MAGIC'
 
 
-
-# input files (automatically generated
+# input files (automatically generated)
 image_file_name = '/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/RE5/' + main_folder + '/' + sub_folder_name + '/' + sub_folder_name + '.tif'
 metadata_file='/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/RE5/' + main_folder + '/' + sub_folder_name + '/' + sub_folder_name + '_metadata.xml'
+cloud_file='/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/RE5/' + main_folder + '/' + sub_folder_name + '/' + sub_folder_name + '_udm.tif'
 
 Esdistance_file="/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/bin/earth_sun_distance.csv"
 out_put_dir = '/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/RE5/' + main_folder + '/' + sub_folder_name
@@ -48,6 +48,7 @@ out_put_dir = '/media/Arc/eo_archive_proc/VHR_SAT_IMAGE/RE5/' + main_folder + '/
 
 min_ndvi= 0.01
 max_ndvi = 1.0
+fillval = 255
 
 # Exo Atmospheric Irradiance for RapidEye bands (effective on or after April 27, 2010)
 B1_irradiance = 1997.80
@@ -55,7 +56,6 @@ B2_irradiance = 1863.50
 B3_irradiance = 1560.40
 B4_irradiance = 1395.00
 B5_irradiance = 1124.40
-
 
 
 # creating the product name based on date (automatically generated)
@@ -76,9 +76,8 @@ if not os.path.exists(product_out_path):
     os.makedirs(product_out_path)
 
 
-
 # main function
-def doit(image_file_name, metadata_file, Esdistance_file, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance):    
+def doit(image_file_name, cloud_file, metadata_file, Esdistance_file, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance):    
     B1_ScaleFactor, B2_ScaleFactor, B3_ScaleFactor, B4_ScaleFactor, B5_ScaleFactor = return_band_radiance(metadata_file)
     solar_zenith_angle_radians = return_located_geometric_values(metadata_file)
     Esdistance = return_strip_source(metadata_file, Esdistance_file)
@@ -87,9 +86,9 @@ def doit(image_file_name, metadata_file, Esdistance_file, B1_irradiance, B2_irra
     B3,geoTransform,proj,ncol,nrow  = return_band(image_file_name,3)
     B4,geoTransform,proj,ncol,nrow  = return_band(image_file_name,4)
     B5,geoTransform,proj,ncol,nrow  = return_band(image_file_name,5)
+    cloud,geoTransform,proj,ncol,nrow  = return_band(cloud_file,1)
     B1_TOA_radiance, B2_TOA_radiance, B3_TOA_radiance, B4_TOA_radiance, B5_TOA_radiance = calculate_toa_radiance(B1, B2, B3, B4, B5, B1_ScaleFactor, B2_ScaleFactor, B3_ScaleFactor, B4_ScaleFactor, B5_ScaleFactor)
-    calculate_toa_reflectance(out_put_dir,product,B1_TOA_radiance, B2_TOA_radiance, B3_TOA_radiance, B4_TOA_radiance, B5_TOA_radiance, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance, Esdistance, solar_zenith_angle_radians)
-
+    calculate_toa_reflectance(cloud, out_put_dir,product,B1_TOA_radiance, B2_TOA_radiance, B3_TOA_radiance, B4_TOA_radiance, B5_TOA_radiance, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance, Esdistance, solar_zenith_angle_radians)
 
 
 # function to read the image bands
@@ -128,6 +127,7 @@ def output_file(output_name,output_array,geoTransform,proj,ncol,nrow):
     outBand = outDataset.GetRasterBand(1)
     outBand.WriteArray(output_array,0,0)
     outBand.FlushCache()
+    outBand.SetNoDataValue(fillval)
     outDataset.SetGeoTransform(geoTransform )
     outDataset.SetProjection(proj)
 
@@ -171,9 +171,6 @@ def return_band_radiance(metadata_file):
     return B1_ScaleFactor, B2_ScaleFactor, B3_ScaleFactor, B4_ScaleFactor, B5_ScaleFactor
 
 
-
-
-
 # central solar zenith angle ( 90.00 - center_sun_elevation )
 def return_located_geometric_values(metadata_file):
     doc = minidom.parse(metadata_file)
@@ -191,10 +188,7 @@ def return_located_geometric_values(metadata_file):
 
 
 
-
-
 # Earth-Sun distance (d) in astronomical units for Day of the Year (DOY); DOY, Esdistance
-
 def return_strip_source(metadata_file, Esdistance_file):
     doc = minidom.parse(metadata_file)
     DownlinkInformation = doc.getElementsByTagName('eop:DownlinkInformation')
@@ -219,10 +213,7 @@ def return_strip_source(metadata_file, Esdistance_file):
 
 
 
-
-
 # Band specific TOA Rediance Estimation
-
 def calculate_toa_radiance(B1, B2, B3, B4, B5, B1_ScaleFactor, B2_ScaleFactor, B3_ScaleFactor, B4_ScaleFactor, B5_ScaleFactor):
     B1_TOA_radiance = B1 * B1_ScaleFactor
     print 'B1_TOA_radiance: ' + str(B1_TOA_radiance)
@@ -239,7 +230,7 @@ def calculate_toa_radiance(B1, B2, B3, B4, B5, B1_ScaleFactor, B2_ScaleFactor, B
 
 
 # Band specific TOA Reflectation Estimation
-def calculate_toa_reflectance(out_put_dir,product,B1_TOA_radiance, B2_TOA_radiance, B3_TOA_radiance, B4_TOA_radiance, B5_TOA_radiance, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance, Esdistance, solar_zenith_angle_radians):
+def calculate_toa_reflectance(cloud, out_put_dir,product,B1_TOA_radiance, B2_TOA_radiance, B3_TOA_radiance, B4_TOA_radiance, B5_TOA_radiance, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance, Esdistance, solar_zenith_angle_radians):
 
     B1_TOA_reflectance = (math.pi * B1_TOA_radiance * math.pow(Esdistance, 2)) / (B1_irradiance * math.cos(solar_zenith_angle_radians))
     print 'B1_TOA_reflectance: ' + str(B1_TOA_reflectance)
@@ -265,6 +256,25 @@ def calculate_toa_reflectance(out_put_dir,product,B1_TOA_radiance, B2_TOA_radian
     B5_name = product_output_name(out_put_dir,product,'B5')
     ndvi_name = product_output_name(out_put_dir,product,'ndvi')
 
+    # masking for unusable pixel
+    cloud = numpy.repeat(cloud, 10, axis = 1)
+    cloud = numpy.repeat(cloud, 10, axis = 0)
+    cloud_mask = numpy.where(cloud != 0, 1, 0)
+    Band_mask = numpy.where(Band == 0, 1, 0)
+    
+    numpy.putmask(B1_TOA_reflectance, cloud_mask, fillval)
+    numpy.putmask(B2_TOA_reflectance, cloud_mask, fillval)
+    numpy.putmask(B3_TOA_reflectance, cloud_mask, fillval)
+    numpy.putmask(B4_TOA_reflectance, cloud_mask, fillval)
+    numpy.putmask(B5_TOA_reflectance, cloud_mask, fillval)
+
+    numpy.putmask(B1_TOA_reflectance, Band_mask, fillval)
+    numpy.putmask(B2_TOA_reflectance, Band_mask, fillval)
+    numpy.putmask(B3_TOA_reflectance, Band_mask, fillval)
+    numpy.putmask(B4_TOA_reflectance, Band_mask, fillval)
+    numpy.putmask(B5_TOA_reflectance, Band_mask, fillval)
+
+
     print "Processing B1_name ... "
     output_file(B1_name,B1_TOA_reflectance,geoTransform,proj,ncol,nrow)
     print "Processing B2_name ... "
@@ -283,12 +293,16 @@ def calculate_toa_reflectance(out_put_dir,product,B1_TOA_radiance, B2_TOA_radian
 
     numpy.putmask(ndvi, min_ndvi_mask, min_ndvi)
     numpy.putmask(ndvi, max_ndvi_mask, max_ndvi)
+    numpy.putmask(ndvi, cloud_mask, fillval)
+    numpy.putmask(ndvi, Band_mask, fillval)
 
     output_file(ndvi_name,ndvi,geoTransform,proj,ncol,nrow)
     band = None
+    cloud = None
+    cloud_mask = None
+    Band_mask = None
     ndvi = None
 
-            
 
 if __name__ == "__main__":
-    doit(image_file_name, metadata_file, Esdistance_file, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance)
+    doit(image_file_name, cloud_file, metadata_file, Esdistance_file, B1_irradiance, B2_irradiance, B3_irradiance, B4_irradiance, B5_irradiance)
