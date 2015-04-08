@@ -11,6 +11,11 @@ from osgeo.gdalconst import *
 import multiprocessing
 
 startdate='2005001'
+#directories
+input_dir = '/media/Arc/eo_archive_proc/MOD09Q1/downloads/h18v03'
+output_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/h18v03'
+#filename= '/media/Arc/eo_archive_proc/MOD09Q1/downloads/h08v06/MOD09Q1/MOD09Q1.A2014081.h08v06.005.2014090090436.hdf'
+
 
 # start timing
 startTime = time.time()
@@ -18,44 +23,27 @@ startTime = time.time()
 # information on MOD09Q1 file
 ncol = 4800
 nrow = 4800 
-
 fillval_band = -28672
 fillval_qc = 65535
-
 fillval = 255
-
 min_ndvi= -0.2
 max_ndvi = 1.0
-
-#directories
-input_dir = '/media/Arc/eo_archive_proc/MOD09Q1/downloads/h18v03'
-output_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/h18v03'
-#filename= '/media/Arc/eo_archive_proc/MOD09Q1/downloads/h08v06/MOD09Q1/MOD09Q1.A2014081.h08v06.005.2014090090436.hdf'
-
-
 
 # function to read specific band
 def return_band(mod09q1_file_name, band_number):
 	
     fn_mod09q1 = mod09q1_file_name
     fn_mod09a1 = fn_mod09q1.replace("MOD09Q1","MOD09A1")
-    
     if band_number < 3 and band_number > 0:
         fn_mod09q1 = 'HDF4_EOS:EOS_GRID:'+fn_mod09q1+':MOD_Grid_250m_Surface_Reflectance:sur_refl_b0'+str(band_number)
-
     elif band_number < 8 and band_number > 2:
         fn_mod09a1 = 'HDF4_EOS:EOS_GRID:'+fn_mod09a1+':MOD_Grid_500m_Surface_Reflectance:sur_refl_b0'+str(band_number)
-
     elif band_number == 33:
         fn_mod09q1 = 'HDF4_EOS:EOS_GRID:'+fn_mod09q1+':MOD_Grid_250m_Surface_Reflectance:sur_refl_qc_250m'
-
     elif band_number == 11:
         fn_mod09a1 = 'HDF4_EOS:EOS_GRID:'+fn_mod09a1+':MOD_Grid_500m_Surface_Reflectance:sur_refl_state_500m'
-
     elif band_number == 12:
         fn_mod09a1 = 'HDF4_EOS:EOS_GRID:'+fn_mod09a1+':MOD_Grid_500m_Surface_Reflectance:sur_refl_day_of_year'
-
-        
     else:
         print 'Band number out of range'
         sys.exit(1)
@@ -92,8 +80,6 @@ def return_band(mod09q1_file_name, band_number):
         ds_mod09a1 = None
         band = None
 
-
-
 # define the otput file
 def output_file(output_name,output_array,geoTransform,proj):
     format = "GTiff"
@@ -106,8 +92,6 @@ def output_file(output_name,output_array,geoTransform,proj):
     outDataset.SetGeoTransform(geoTransform )
     outDataset.SetProjection(proj)
 
-
-
 # finding all the hdf files in the mentioned root directories 
 def findfiles(input_dir):
     toprocess = []
@@ -118,9 +102,6 @@ def findfiles(input_dir):
                     toprocess.append( os.path.join(root, name) )
     return toprocess
 
-
-
-
 # define the product output name
 def product_output_name(output_dir,mod09q1_name,product):
     product_dir = os.path.join(output_dir,product)
@@ -128,9 +109,6 @@ def product_output_name(output_dir,mod09q1_name,product):
     product_path_file = os.path.join(product_dir,product_output_name)
     # print 'Output file:   ',product_path_file
     return product_path_file
-
-
-
 
 # processign NDVI
 def process_ndvi(mod09q1_file_name,ndvi_output_name):
@@ -170,9 +148,7 @@ def process_ndvi(mod09q1_file_name,ndvi_output_name):
     # apply all the masks
     numpy.putmask(ndvi, qc011, fillval)
     numpy.putmask(ndvi, qc02, fillval)
-    
     numpy.putmask(ndvi, water_mask, fillval)
-    
     numpy.putmask(ndvi, min_ndvi_mask, fillval)
     numpy.putmask(ndvi, max_ndvi_mask, fillval)
     
@@ -180,25 +156,17 @@ def process_ndvi(mod09q1_file_name,ndvi_output_name):
     
     red = None
     nir1 = None
-    
-
     qc = None
     mask011 = None
     qc011 = None
-
     stateflags = None
     mask02 = None
     qc02 = None
-    
     water = None
     water_mask = None
-    
     ndvi = None
-    
     min_ndvi_mask = None
     max_ndvi_mask = None
-
-
 
 
 # processign MSAVI
@@ -214,7 +182,6 @@ def process_msavi(mod09q1_file_name,msavi_output_name):
     
     print 'Calculating MSAVI....'
     msavi =  0.5*( 2*nir1 + 1 - ( (2*nir1 + 1)**2 - 8*(nir1 - red) )**0.5 )
-    
     
     # MOD09q1 quality mask preparation
     qc = return_band(fn_mod09q1,33)[0]
@@ -238,38 +205,27 @@ def process_msavi(mod09q1_file_name,msavi_output_name):
     max_ndvi_mask = numpy.where(msavi > max_ndvi, 1, 0)
     
     # apply all the masks
-    
     numpy.putmask(msavi, qc011, fillval)
     numpy.putmask(msavi, qc02, fillval)
-    
     numpy.putmask(msavi, water_mask, fillval)
-    
     numpy.putmask(msavi, min_ndvi_mask, fillval)
     numpy.putmask(msavi, max_ndvi_mask, fillval)
     
     output_file(msavi_output_name,msavi,geoTransform,proj)
     
-    
     red = None
-    nir1 = None
-
+    nir1 = Non
     qc = None
     mask011 = None
     qc011 = None
-
     stateflags = None
     mask02 = None
     qc02 = None
-    
     water = None
     water_mask = None
-    
     msavi = None
-    
     min_ndvi_mask = None
     max_ndvi_mask = None
-
-
 
 
 def process_chl(mod09q1_file_name,chl_output_name):
@@ -279,10 +235,8 @@ def process_chl(mod09q1_file_name,chl_output_name):
     
     nir1,geoTransform,proj  = return_band(fn_mod09q1,2)
     green = return_band(fn_mod09a1,4)[0]
-    
     nir1_mask = numpy.where(nir1 == -28672, 1, 0)
     green_mask = numpy.where(green == -28672, 1, 0)
-    
     nir1 = nir1 * 0.0001
     green = green * 0.0001
     
@@ -313,13 +267,10 @@ def process_chl(mod09q1_file_name,chl_output_name):
     # apply all the masks
     numpy.putmask(chl, nir1_mask, fillval)
     numpy.putmask(chl, green_mask, fillval)
-    
     numpy.putmask(chl, qc011, fillval)
     numpy.putmask(chl, qc02, fillval)
-    
     numpy.putmask(chl, min_chl_mask, fillval)
     numpy.putmask(chl, max_chl_mask, fillval)
-    
     numpy.putmask(chl, water_mask, fillval)
     
     output_file(chl_output_name,chl,geoTransform,proj)
@@ -329,18 +280,14 @@ def process_chl(mod09q1_file_name,chl_output_name):
     nir1 = None
     nir1_mask = None
     green_mask = None
-
     qc = None
     mask011 = None
     qc011 = None
-
     stateflags = None
     mask02 = None
     qc02 = None
-    
     water = None
     water_mask = None
-    
     chl = None
     
 
@@ -356,7 +303,6 @@ def process_doy(mod09q1_file_name,doy_output_name):
     
     print 'processing DOY....'
     doy = doy * 1.0
-    
     
     # MOD09q1 quality mask preparation
     qc = return_band(fn_mod09q1,33)[0]
@@ -376,50 +322,22 @@ def process_doy(mod09q1_file_name,doy_output_name):
     water_mask = numpy.where(water == 1 , 0, 1)
     
     # apply all the masks
-    
     numpy.putmask(doy, qc011, fillval)
     numpy.putmask(doy, qc02, fillval)
-    
     numpy.putmask(doy, water_mask, fillval)
-    
     output_file(doy_output_name,doy,geoTransform,proj)
     
     red = None
-
     qc = None
     mask011 = None
     qc011 = None
-
     stateflags = None
     mask02 = None
     qc02 = None
-    
     water = None
     water_mask = None
-    
     doy = None
 
-
-
-def process_sipi(mod09a1_file_name,sipi_output_name):
-    #open mod09a1
-    fn_mod09a1 = mod09a1_file_name
-    
-    red,geoTransform,proj  = return_band(fn_mod09a1,1) # band 1 -- red		(620 - 670nm)
-    nir1 = return_band(fn_mod09a1,2)[0] # band 2 -- nir1	(841 - 875 nm)
-    blue = return_band(fn_mod09a1,3)[0] # band 3 -- blue	(459 - 479 nm)    
-
-    ocean_mask = numpy.where(red == -28672, 1, 0)
-    red_mask = numpy.where(red <= 1 , 1, 0)
-    nir1_mask = numpy.where(nir1 <= 1, 1, 0)
-    blue_mask = numpy.where(blue <= 1, 1, 0)
-    
-    
-    cloud = process_cloudmask(fn_mod09a1)
-    cloud_mask = numpy.where(cloud > 1, 1, 0)
-
-    sipi = (nir1 - blue) / (nir1 - red)
-    
 
 
 
