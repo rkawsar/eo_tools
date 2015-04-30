@@ -20,7 +20,7 @@ arcpy.env.workspace = 'X:\\WORKSPACE'
 # Lechfeld, Mannheim, Oschersleben, Straubing, Wittingen
 
 # input variable
-site_name = 'Grossalsleben'
+site_name = 'Elmshorn'
 # ----------------------------------------------------------------------------
 
 
@@ -30,6 +30,7 @@ site_name = 'Grossalsleben'
 t1 = time.time()
 time_stamp = time.strftime("%Y%m%d_%H%M%S")
 wrk_dir = 'X:\\WORKSPACE'
+wrk_Geodatabase = 'X:\\WORKSPACE\\wrk_Geodatabase.gdb'
 in_dir = "X:\\150301_BASF_MAGIC\\Germany\\site_specific_analysis"
 in_raster_dir = os.path.join(in_dir, site_name, 'rasters')
 in_shp_dir = os.path.join(in_dir, site_name, 'shpfiles')
@@ -67,8 +68,8 @@ def raster_to_point(in_raster, in_shp):
     out_point = os.path.basename(in_raster)
     out_point = out_point.split('_')[0]
     cliped_raster = os.path.join(wrk_dir,'rasters', out_point + '_clip.tif')
-    out_point = os.path.join(wrk_dir,'shpfiles', out_point + '_points.shp')
-    out_point = out_point.replace('X', 'C')
+    out_point = os.path.join(wrk_Geodatabase, out_point + '_points')
+    #out_point = out_point.replace('X', 'C')
     print out_point
     
     if os.path.exists(cliped_raster):
@@ -108,14 +109,11 @@ def extract_multiValues_to_points(raster_list, in_shp):
     ExtractMultiValuesToPoints(in_shp, list_to_process, "NONE")
 
 
-def replaceNull(x):
-  if x is None:
-    return 0
-  else:
-    return x
+
 
 
 def calculate_vi_index(in_shp):
+
     # Execute AddField
     fieldList = arcpy.ListFields(in_shp)
     field_name_list = []
@@ -140,9 +138,6 @@ def calculate_vi_index(in_shp):
         for field in fieldList:
             if fnmatch.fnmatch(field.name, 'B*'):
 
-                # replace Null Value with 0
-                #print 'replacing Null Value with 0...'
-                #replaceNull("!"+field.name+"!")
 
                 if fnmatch.fnmatch(field.name.split('_')[1], date):
                     if fnmatch.fnmatch(field.name, 'B1_*'):
@@ -173,20 +168,19 @@ def calculate_vi_index(in_shp):
                         msavi_expression = "0.5*(2*!" +nir+ "!+1-math.sqrt(math.pow((2*!" +nir+ "!+1),2 )-8*(!" +nir+ "!-!"+red+"!)))"
 
                         print 'Computing NDVI ..'
-                        arcpy.AddField_management(in_shp, '' + ndvi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
-                        #arcpy.AddField_management(Shapefile, "Francis", "LONG", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+                        arcpy.AddField_management(in_shp, '' + ndvi_field_name + '', "DOUBLE", "","","","","NULLABLE","NON_REQUIRED","")
                         arcpy.CalculateField_management(in_shp, '' + ndvi_field_name + '', ndvi_expression, "PYTHON")
 
                         print 'Computing SIPI ..'
-                        arcpy.AddField_management(in_shp, '' + sipi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+                        arcpy.AddField_management(in_shp, '' + sipi_field_name + '', "DOUBLE", "","","","","NULLABLE","NON_REQUIRED","")
                         arcpy.CalculateField_management(in_shp, '' + sipi_field_name + '', sipi_expression, "PYTHON")
 
                         print 'Computing CHL ..'
-                        arcpy.AddField_management(in_shp, '' + chl_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+                        arcpy.AddField_management(in_shp, '' + chl_field_name + '', "DOUBLE", "","","","","NULLABLE","NON_REQUIRED","")
                         arcpy.CalculateField_management(in_shp, '' + chl_field_name + '', chl_expression, "PYTHON")
 
                         print 'Computing MSAVI ..'
-                        arcpy.AddField_management(in_shp, '' + msavi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+                        arcpy.AddField_management(in_shp, '' + msavi_field_name + '', "DOUBLE", "","","","","NULLABLE","NON_REQUIRED","")
                         arcpy.CalculateField_management(in_shp, '' + msavi_field_name + '', msavi_expression, "PYTHON")
 
 
