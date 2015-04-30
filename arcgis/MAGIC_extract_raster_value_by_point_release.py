@@ -108,6 +108,12 @@ def extract_multiValues_to_points(raster_list, in_shp):
     ExtractMultiValuesToPoints(in_shp, list_to_process, "NONE")
 
 
+def replaceNull(x):
+  if x is None:
+    return 0
+  else:
+    return x
+
 
 def calculate_vi_index(in_shp):
     # Execute AddField
@@ -133,6 +139,11 @@ def calculate_vi_index(in_shp):
         print 'Started VI computation for date ...' + date
         for field in fieldList:
             if fnmatch.fnmatch(field.name, 'B*'):
+
+                # replace Null Value with 0
+                #print 'replacing Null Value with 0...'
+                #replaceNull("!"+field.name+"!")
+
                 if fnmatch.fnmatch(field.name.split('_')[1], date):
                     if fnmatch.fnmatch(field.name, 'B1_*'):
                         blue = field.name
@@ -144,6 +155,9 @@ def calculate_vi_index(in_shp):
                         re = field.name
                     elif fnmatch.fnmatch(field.name, 'B5_*'):
                         nir = field.name
+
+                        
+                        
 
                         print 'Available Bands are Blue: {0}, green: {1}, red: {2}, re: {3}, nir: {4}'.format(blue, green, red, re, nir)
                         time_stamp = red.split('_')[1]
@@ -159,19 +173,20 @@ def calculate_vi_index(in_shp):
                         msavi_expression = "0.5*(2*!" +nir+ "!+1-math.sqrt(math.pow((2*!" +nir+ "!+1),2 )-8*(!" +nir+ "!-!"+red+"!)))"
 
                         print 'Computing NDVI ..'
-                        arcpy.AddField_management(in_shp, '' + ndvi_field_name + '', "DOUBLE")
+                        arcpy.AddField_management(in_shp, '' + ndvi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+                        #arcpy.AddField_management(Shapefile, "Francis", "LONG", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
                         arcpy.CalculateField_management(in_shp, '' + ndvi_field_name + '', ndvi_expression, "PYTHON")
 
                         print 'Computing SIPI ..'
-                        arcpy.AddField_management(in_shp, '' + sipi_field_name + '', "DOUBLE")
+                        arcpy.AddField_management(in_shp, '' + sipi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
                         arcpy.CalculateField_management(in_shp, '' + sipi_field_name + '', sipi_expression, "PYTHON")
 
                         print 'Computing CHL ..'
-                        arcpy.AddField_management(in_shp, '' + chl_field_name + '', "DOUBLE")
+                        arcpy.AddField_management(in_shp, '' + chl_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
                         arcpy.CalculateField_management(in_shp, '' + chl_field_name + '', chl_expression, "PYTHON")
 
                         print 'Computing MSAVI ..'
-                        arcpy.AddField_management(in_shp, '' + msavi_field_name + '', "DOUBLE")
+                        arcpy.AddField_management(in_shp, '' + msavi_field_name + '', "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
                         arcpy.CalculateField_management(in_shp, '' + msavi_field_name + '', msavi_expression, "PYTHON")
 
 
@@ -269,5 +284,8 @@ if __name__ == "__main__":
 
     t2 = time.time()
     print 'Processing Finished and it took: ' + str((t2-t1)/60) + ' min'
+
+
+
 
 
