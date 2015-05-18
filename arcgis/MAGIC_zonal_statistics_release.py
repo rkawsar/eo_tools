@@ -2,7 +2,7 @@
 # Script devised for MAGIC PROJECT
 # Author Riazuddin Kawsar
 # email: r.kawsar@spatial-business-integration
-# date: 27th April 2015
+# date: 18th May 2015
 # ---------------------------------------------------------------------------
 
 
@@ -12,12 +12,28 @@ import os, sys, string, glob, time, fnmatch
 arcpy.CheckOutExtension("spatial")
 
 
+# Aschersleben, Dohndorf, Elmshorn, Grossalsleben, Laubach
+# Lechfeld, Mannheim, Oschersleben, Straubing, Wittingen
+
+
 
 # input variable
-site_name = 'Laubach'
+site_name = 'Aschersleben'
+crop_code = 'ww'
+
+
 # ----------------------------------------------------------------------------
 
-
+utm_zones = {'asc':'utm32',
+             'don':'utm32',
+             'elm':'utm32',
+             'gro':'utm32',
+             'lau':'utm32',
+             'lec':'utm32',
+             'man':'utm32',
+             'osc':'utm32',
+             'str':'utm33',
+             'wit':'utm32'}
 
 ## yyyy/mm/dd_"%I-%M-%S"
 time_stamp = time.strftime("%Y%m%d_%H%M%S")
@@ -25,7 +41,7 @@ temp = "X:\\temp"
 in_dir = "X:\\150301_BASF_MAGIC\\Germany\\site_specific_analysis"
 in_raster_dir = os.path.join(in_dir, site_name, 'rasters')
 out_raster_stat_dir = os.path.join(in_dir, site_name, 'FYPM', 'raster_stats')
-in_shp_dir = os.path.join(in_dir, site_name, 'shpfiles')
+in_shp_dir = "X:\\150301_BASF_MAGIC\\Germany\\shpfile"
 
 
 
@@ -35,11 +51,16 @@ def CreateDirectory(DBF_dir):
         print "created directory {0}".format(DBF_dir)
         
 
-def find_shp_files(input_dir):
+def find_shp_files(in_shp_dir, site_name, utm_zones):
     toprocess = []
-    for root,dir,files in os.walk(input_dir):
+    
+    site_code = (site_name.lower())[0:3]
+    zone = utm_zones.get(str(site_code),"None")
+    shp_pattern = '*_' + zone + '.shp'
+
+    for root,dir,files in os.walk(in_shp_dir):
         for name in sorted(files):
-            if fnmatch.fnmatch(name,'*.shp'):
+            if fnmatch.fnmatch(name, shp_pattern):
                 toprocess.append( os.path.join(root, name) )
     return toprocess
 
@@ -81,24 +102,28 @@ def MergeTables(DBF_dir,zstat_table):
 
     # remove all the intermediate files
     for table in tableList:
-        table = table.split('.')[0]
-        dbf_file = os.path.join(DBF_dir, table + '.dbf')
-        xml_file = os.path.join(DBF_dir, table + '.dbf.xml')
-        cpg_file = os.path.join(DBF_dir, table + '.cpg')
-        os.remove(dbf_file)
-        os.remove(xml_file)
-        os.remove(cpg_file)
+        arcpy.Delete_management(table, "")
 
-        
+
 
 if __name__ == "__main__":
     DBF_dir = temp + os.sep + "DBFile"
-    shp_file = find_shp_files(in_shp_dir)
+    shp_file = find_shp_files(in_shp_dir, site_name, utm_zones)
+    print shp_file
+    site_code = (site_name.lower())[0:3]
     rasters = find_raster_files(in_raster_dir)
-    zoneField = "field_name"
+    zoneField = "field_id"
     CreateDirectory(DBF_dir)
-
+    
     for i in shp_file:
+        print 'Clipping shpfiles ... ' + i
+        whereClause_site = "site ='%s'" % site_name
+        whereClause_crop = "crop_id ='%s'" % crop_code
+        #user selects tract, Select by Attribute tool runs
+        arcpy.MakeFeatureLayer_management(i, "lyr")
+        arcpy.SelectLayerByAttribute_management ("lyr", "NEW_SELECTION", whereClause_site)
+        arcpy.SelectLayerByAttribute_management("lyr", "SUBSET_SELECTION", whereClause_crop)
+        
         for j in rasters:
             
             name =  os.path.basename(j)
@@ -109,11 +134,24 @@ if __name__ == "__main__":
             year = date[6:8]
             date = day + month + year
             band = name.split('_')[1]
-            ZonalStasAsTable(i,DBF_dir,j,band,date,zoneField)
+            ZonalStasAsTable("lyr",DBF_dir,j,band,date,zoneField)
 
-    zstat_table = DBF_dir + os.sep + "Site_{0}_zonalstat.dbf".format(site_name)
+    zstat_table = DBF_dir + os.sep + "Site_{0}_{1}_zonalstat.dbf".format(site_name, crop_code)
     MergeTables(DBF_dir,zstat_table)
+    
+    zstat_table_name = os.path.basename(zstat_table)
+    zstat_table_xml_name = zstat_table + '.xml'
+    zstat_table_xml_name_1 = zstat_table_name + '.xml'
+    zstat_table_new_xml_name = os.path.join(out_raster_stat_dir, zstat_table_xml_name_1)
+    zstat_table_new_name = os.path.join(out_raster_stat_dir, zstat_table_name)
+    if os.path.exists(zstat_table_new_name):
+        os.remove(zstat_table_new_name)
+        print 'deleting old *.dbf files'
+    if os.path.exists(zstat_table_new_xml_name):
+        print 'deleting old *.xml files'
+        os.remove(zstat_table_new_xml_name)
+    os.rename(zstat_table, zstat_table_new_name)
+    os.rename(zstat_table_xml_name, zstat_table_new_xml_name)
+    # Execute Copy
+    # arcpy.Copy_management(in_data, out_data, data_type)
 
-'''
-
-'''
