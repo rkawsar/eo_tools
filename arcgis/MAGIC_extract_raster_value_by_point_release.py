@@ -2,7 +2,7 @@
 # Script devised for MAGIC PROJECT
 # Author Riazuddin Kawsar
 # email: r.kawsar@spatial-business-integration
-# date: 30th April 2015
+# date: 18th may 2015
 # ---------------------------------------------------------------------------
 
 
@@ -20,11 +20,21 @@ arcpy.env.workspace = 'X:\\WORKSPACE'
 # Lechfeld, Mannheim, Oschersleben, Straubing, Wittingen
 
 # input variable
-site_name = 'Elmshorn'
+site_name = 'Laubach'
+crop_code = 'ww'
+
 # ----------------------------------------------------------------------------
 
-
-
+utm_zones = {'asc':'utm32',
+             'don':'utm32',
+             'elm':'utm32',
+             'gro':'utm32',
+             'lau':'utm32',
+             'lec':'utm32',
+             'man':'utm32',
+             'osc':'utm32',
+             'str':'utm33',
+             'wit':'utm32'}
 
 ## yyyy/mm/dd_"%I-%M-%S"
 t1 = time.time()
@@ -33,7 +43,7 @@ wrk_dir = 'X:\\WORKSPACE'
 wrk_Geodatabase = 'X:\\WORKSPACE\\wrk_Geodatabase.gdb'
 in_dir = "X:\\150301_BASF_MAGIC\\Germany\\site_specific_analysis"
 in_raster_dir = os.path.join(in_dir, site_name, 'rasters')
-in_shp_dir = os.path.join(in_dir, site_name, 'shpfiles')
+in_shp_dir = "X:\\150301_BASF_MAGIC\\Germany\\shpfile"
 out_raster_stat_dir = os.path.join(in_dir, site_name, 'FYPM', 'raster_stats')
 
 
@@ -44,11 +54,16 @@ def CreateDirectory(DBF_dir):
         print "created directory {0}".format(DBF_dir)
 
 
-def find_shp_files(input_dir):
+def find_shp_files(in_shp_dir, site_name, utm_zones):
     toprocess = []
-    for root,dir,files in os.walk(input_dir):
+    
+    site_code = (site_name.lower())[0:3]
+    zone = utm_zones.get(str(site_code),"None")
+    shp_pattern = '*_' + zone + '.shp'
+
+    for root,dir,files in os.walk(in_shp_dir):
         for name in sorted(files):
-            if fnmatch.fnmatch(name,'*.shp'):
+            if fnmatch.fnmatch(name, shp_pattern):
                 toprocess.append( os.path.join(root, name) )
     return toprocess
 
@@ -243,43 +258,46 @@ if __name__ == "__main__":
     raster_list = find_raster_files(in_raster_dir)
     
     # gather shpfiles in a list and find the field boundaries
-    shpfile_list = find_shp_files(in_shp_dir)
-    for shpfile in shpfile_list:
-        if fnmatch.fnmatch(shpfile, '*_utm.shp'):
-            field_boundaries = shpfile
-            print 'Field Boundary Shpfile : ' + os.path.basename(field_boundaries)
+    shp_file = find_shp_files(in_shp_dir, site_name, utm_zones)
 
-    # define the raster point output file
-    out_spatial_join_point = field_boundaries.split('.')[-2] + '_points.shp'
-    if os.path.exists(out_spatial_join_point):
-        arcpy.Delete_management(out_spatial_join_point)
+    for i in shp_file:
+        print 'Clipping shpfiles ... ' + i
+        whereClause_site = "site ='%s'" % site_name
+        whereClause_crop = "crop_id ='%s'" % crop_code
+        #user selects tract, Select by Attribute tool runs
+        arcpy.MakeFeatureLayer_management(i, "field_boundaries")
+        arcpy.SelectLayerByAttribute_management ("field_boundaries", "NEW_SELECTION", whereClause_site)
+        arcpy.SelectLayerByAttribute_management("field_boundaries", "SUBSET_SELECTION", whereClause_crop)
 
-    # convert the raster (1st one from the raster_list)
-    raster_points = raster_to_point(raster_list[0], field_boundaries)
+        # define the raster point output file
+        out_spatial_join_point = os.path.join(in_dir, site_name, shpfiles)
+        out_spatial_join_point = out_spatial_join_point + '_' + site_name + '_' + crop_code + '_points.shp'
+        if os.path.exists(out_spatial_join_point):
+            arcpy.Delete_management(out_spatial_join_point)
 
-    # executing extract_multiValues_to_points which will populate the raster_points attributes
-    extract_multiValues_to_points(raster_list, raster_points)
+        # convert the raster (1st one from the raster_list)
+        raster_points = raster_to_point(raster_list[0], "field_boundaries")
 
-    # do some attribute calculation....
-    calculate_vi_index(raster_points)
-    
-    #Executing the spatial join....
-    poly_point_intersect(field_boundaries, raster_points, out_spatial_join_point)
+        # executing extract_multiValues_to_points which will populate the raster_points attributes
+        extract_multiValues_to_points(raster_list, raster_points)
 
-    # deleting the files....
-    arcpy.Delete_management(raster_points)
+        # do some attribute calculation....
+        calculate_vi_index(raster_points)
+        
+        #Executing the spatial join....
+        poly_point_intersect("field_boundaries", raster_points, out_spatial_join_point)
 
-    # Gathering Field Statistics ....
-    field_stat_out_name = os.path.basename(out_spatial_join_point).split('.')[0]
-    field_stat_out_name = os.path.join(out_raster_stat_dir, field_stat_out_name + '.dbf')
-    if os.path.exists(field_stat_out_name):
-        arcpy.Delete_management(field_stat_out_name)
-    generate_field_stat(out_spatial_join_point, field_stat_out_name)
+        # deleting the files....
+        arcpy.Delete_management(raster_points)
+
+        # Gathering Field Statistics ....
+        field_stat_out_name = os.path.basename(out_spatial_join_point).split('.')[0]
+        field_stat_out_name = os.path.join(out_raster_stat_dir, field_stat_out_name + '.dbf')
+        if os.path.exists(field_stat_out_name):
+            arcpy.Delete_management(field_stat_out_name)
+        generate_field_stat(out_spatial_join_point, field_stat_out_name)
 
     t2 = time.time()
     print 'Processing Finished and it took: ' + str((t2-t1)/60) + ' min'
-
-
-
 
 
