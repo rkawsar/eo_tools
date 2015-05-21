@@ -18,7 +18,7 @@ arcpy.CheckOutExtension("spatial")
 
 
 # input variable
-site_name = 'Aschersleben'
+site_name = 'Elmshorn'
 crop_code = 'ww'
 
 
