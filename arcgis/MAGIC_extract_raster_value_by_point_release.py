@@ -300,4 +300,3 @@ if __name__ == "__main__":
     t2 = time.time()
     print 'Processing Finished and it took: ' + str((t2-t1)/60) + ' min'
 
-
