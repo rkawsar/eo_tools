@@ -6,6 +6,8 @@
 # usualls gdalwarp or gdal_translate produces a shift in the image
 # but this script solves that problem. Cliping image without shift.
 
+
+
 from osgeo import gdal, gdalnumeric, ogr, osr
 import Image, ImageDraw
 import os, sys, fnmatch
@@ -16,8 +18,9 @@ gdal.UseExceptions()
 # Aschersleben, Dohndorf, Elmshorn, Grossalsleben
 # Laubach, Lechfeld, Mannheim, Straubing, Wittingen
 
+
 # input variable
-site_name = 'Wittingen'
+site_name = 'Lechfeld'
 crop = ['ww', 'wrs'] #cr
 
 #------------------------------------------------------------------------------------------
@@ -28,6 +31,7 @@ site_path = os.path.join(project_path, site_name)
 in_rst_path = os.path.join(project_path, site_name, 'rasters')
 in_shp = '/media/SBIProject/150301_BASF_MAGIC/Germany/shpfile/Germany_all_fields_v01_wgs84.shp'
 fillvalue = 255.0
+
 
 def findfiles(input_dir, file_type):
     toprocess = []
@@ -53,10 +57,24 @@ def world2Pixel(geoMatrix, x, y):
   line = int((ulY - y) / xDist)
   return (pixel, line)
 
+
+def coord2pixelOffset(rasterfn,x,y):
+    raster = gdal.Open(rasterfn)
+    geotransform = raster.GetGeoTransform()
+    originX = geotransform[0]
+    originY = geotransform[3]
+    pixelWidth = geotransform[1]
+    pixelHeight = geotransform[5]
+    xOffset = int((x - originX)/pixelWidth)
+    yOffset = int((y - originY)/pixelHeight)
+    return xOffset,yOffset
+
+
 def OpenArray( array, prototype_ds = None, xoff=0, yoff=0 ):
     ds = gdal.Open( gdalnumeric.GetArrayFilename(array) )
     band = ds.GetRasterBand(1)
     band.SetNoDataValue(fillvalue)
+
     if ds is not None and prototype_ds is not None:
         if type(prototype_ds).__name__ == 'str':
             prototype_ds = gdal.Open( prototype_ds )
@@ -77,6 +95,7 @@ def main( shapefile_path, raster_path ):
         field_id_siteCode = field_id.split('_')[0]
         if field_id_siteCode == siteCode and crop_id in crop :
             id.append(f.GetFID())
+            
     for i in id:
         feat=lyr.GetFeature(i)
         field_name = feat.GetFieldAsString('field_name')
@@ -85,7 +104,7 @@ def main( shapefile_path, raster_path ):
         geom = feat.GetGeometryRef()
         f_coord = geom.GetEnvelope()
         minX, maxX, minY, maxY = f_coord
-        
+
         out_rst_path = os.path.join(project_path, site_name, 'FA', field_name, 'rasters')
         if not os.path.exists(out_rst_path):
             os.makedirs(out_rst_path)
@@ -104,6 +123,8 @@ def main( shapefile_path, raster_path ):
             geoTrans = srcImage.GetGeoTransform()
 
             ulX, ulY = world2Pixel(geoTrans, minX, maxY)
+            ulX = ulX + 1
+            ulY = ulY + 1
             lrX, lrY = world2Pixel(geoTrans, maxX, minY)
             #print ulX, ulY, lrX, lrY 
 
@@ -113,6 +134,7 @@ def main( shapefile_path, raster_path ):
             clip = srcArray[ulY:lrY, ulX:lrX]
 
             # EDIT: create pixel offset to pass to new image Projection info
+            #coord2pixelOffset(rasterfn,x,y)
             xoffset =  ulX
             yoffset =  ulY
 
@@ -147,6 +169,8 @@ def main( shapefile_path, raster_path ):
             if gtiffDriver is None:
                 raise ValueError("Can't find GeoTiff Driver")
             gtiffDriver.CreateCopy( outraster, OpenArray( clip, prototype_ds=inraster, xoff=xoffset, yoff=yoffset ))
+
+
 
 if __name__ == '__main__':
     main(in_shp, in_rst_path)
