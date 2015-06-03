@@ -3,7 +3,7 @@
 # Extract Ndvi data from modis Image according to Lattitude/longitude list
 # Author Riazuddin Kawsar
 # email: r.kawsar@spatial-business-integration
-# date: 10th April 2015
+# date: 24th july 2014
 
 
 import os, sys, time, gdal, fnmatch
@@ -14,86 +14,41 @@ import numpy
 import csv
 import multiprocessing
 
-startTime = time.time()
-
-
 
 
 # input parameters -------------------------------------------------------------------------------------
-coord_file = '/media/neel/Num/eo_data/MODIS_GRID/MOD09Q1/Germany/Germany_mod09q1_h18v04_arable_land_point_v01_test_v02.csv'
-raster_file_path = glob.glob('/media/Arc/eo_archive_proc/MOD09Q1/output/h18v03/ndvi' + '/*.tif')
+coord_file = '/media/Arc/eo_archive_proc/MOD09Q1/wrkdir/input_coord_file/MOD09Q1_H18V04.csv'
+out_file = '/media/Arc/eo_archive_proc/MOD09Q1/wrkdir/output_coord_file/mod09q1_h18v04_2015_121_129_test.csv'
 
-# out_file = '/media/neel/Num/eo_data/MODIS_GRID/MOD09Q1/Germany/ndvi_Germany_mod09q1_h18v04_arable_land_point_v01.csv'
-out_dir = '/media/neel/Num/eo_data/MODIS_GRID/MOD09Q1/Germany'
+startdate = '2015115'
+enddate = '2015130'
 
 
+raster_file_path = '/media/Arc/eo_archive_proc/MOD09Q1/output/h18v04/ndvi'
+startTime = time.time()
 
 
 # reading the coordinate list as an arry
 coord_data = numpy.genfromtxt(coord_file, dtype=None, delimiter=',', skip_header=1) #coord_data.dtype.names
 
 
-def doit(coord_data, raster_file_path):
-    prepare_county_list(coord_data)
-    
+# creating the output list.
+output_list = []
+list_out = ['node_code', 'x', 'y', 'date', 'doy', 'ndvi', 'msavi']
+output_list.append(list_out)
 
-def prepare_county_list(coord_data):
-    
-    krs_list = []
-    
-    for i in range(len(coord_data)):
-        krs = coord_data[i][4]
-        krs_list.append(krs)
-    uniq_krs_list = list(set(krs_list))
-    print uniq_krs_list
 
-    coord_list = []
-    
-    for i in range(len(coord_data)):
-        node_code = coord_data[i][0]
-        x = float (coord_data[i][1])
-        y = float (coord_data[i][2])
-        mod09_tile = coord_data[i][3]
-        krs = coord_data[i][4]
-        out_seq = [node_code, x, y, mod09_tile, krs]
-        coord_list.append(out_seq)
+# finding all the hdf files in the mentioned root directories 
+def findfiles(input_dir):
+    toprocess = []
+    for root,dir,files in os.walk(input_dir):
+        for name in sorted(files):
+            if fnmatch.fnmatch(name,'*.tif'):
+                if name[9:-11] > startdate and name[9:-11] < enddate :
+                    toprocess.append( os.path.join(root, name) )
+    return toprocess
 
-    all_list_name = []
- 
-    for i in uniq_krs_list:
-        temp_list = []
-        for j in range(len(coord_list)):
-            if i == coord_list[j][4]:
-                out_seq_1 = [coord_list[j][0], coord_list[j][1], coord_list[j][2], coord_list[j][3],coord_list[j][4]]
-                temp_list.append(out_seq_1)
-        all_list_name.append(temp_list)
 
-    # print all_list_name
-
-    for records in all_list_name:
-        # print records
-        # creating the output list
-        output_list = []
-        list_out = ['node_code', 'x', 'y', 'date', 'doy', 'ndvi', 'msavi']
-        output_list.append(list_out)
-
-        for i in range(len(records)):
-            node_code = records[i][0]
-            x = float (records[i][1])
-            y = float (records[i][2])
-            mod09 = str (records[i][3])
-            krs = str (records[i][4])
-            print 'data extraction started for : ' + str(x), str(y)
-            modis_x, modis_y, modis_z = wgs84_to_modissinu( x, y )
-
-            for files in raster_file_path:
-                date, doy, ndvi, msavi = extract_value_from_raster(files, modis_x, modis_y)
-                output_seq = [node_code, x, y, date, doy, ndvi, msavi]
-                output_list.append(output_seq)
-        out_file = os.path.join(out_dir, 'out_' + krs + '_' + mod09 + '.csv')
-        print 'writing extraction results for  krs:   ' + out_file
-        write_output(out_file, output_list)
-        
 
 
 def extract_value_from_raster(ds_file, modis_x, modis_y):
@@ -148,17 +103,14 @@ def extract_value_from_raster(ds_file, modis_x, modis_y):
 
 def wgs84_to_modissinu ( lon, lat ):
 	wgs84 = osr.SpatialReference( )  # Define a SpatialReference object
-	wgs84.ImportFromEPSG( 4326 ) # And set it to WGS84 using the EPSG code
+	wgs84.ImportFromEPSG( 4326 )
 	# Define the modis data projection, sinusoidal #sinu_modis.ImportFromEPSG( 27700)
 	modis_sinu = osr.SpatialReference() 
 	modis_sinu.ImportFromProj4 ( "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 " + \
                       "+a=6371007.181 +b=6371007.181 " + \
                       "+units=m +no_defs" )
-	# Define a coordinate transformtion object, from wgs84 to sinu_modis
 	tx = osr.CoordinateTransformation(wgs84, modis_sinu)
-	# Actually do the transformation using the TransformPoint method
 	modis_x, modis_y, modis_z = tx.TransformPoint ( lon, lat )
-	#print "converted to modis coordinate:", lon, lat, modis_x, modis_y
 	return modis_x, modis_y, modis_z
 
 
@@ -172,7 +124,6 @@ def modissinu_to_wgs84 ( modis_x, modis_y ):
                       "+units=m +no_defs" )
 	tx = osr.CoordinateTransformation(modis_sinu, wgs84)
 	lon, lat, modis_z = tx.TransformPoint ( modis_x, modis_y )
-	#print "converted to wgs84 coordinate:", modis_x, modis_y, lon, lat
 
 
 
@@ -183,16 +134,52 @@ def write_output(out_file, output_list):
 
 
 
+def doit(coord_data, raster_file_path):
+    mod_coord_list =[]
+    for i in range(len(coord_data)):
+        node_code = coord_data[i][0]
+        x = float (coord_data[i][1])
+        y = float (coord_data[i][2])
+        
+        modis_x, modis_y, modis_z = wgs84_to_modissinu( x, y )
+        nn = [node_code, x, y, modis_x, modis_y]
+        mod_coord_list.append(nn)
+    return mod_coord_list
+
+
+def main(raster_file, node_code, x, y, modis_x, modis_y):
+    #print 'data extraction started for : ' + str(x), str(y)
+    date, doy, ndvi, msavi = extract_value_from_raster(raster_file, modis_x, modis_y)
+    output_seq = [node_code, x, y, date, doy, ndvi, msavi]
+    return output_seq
+
+
+# auxiliary funciton to make it work
+def job_helper(args):
+    return main(*args)
+
+
+def process_tuples(raster_file_path, coord_data):
+    parallal_args = []
+    filelist = findfiles(raster_file_path)
+    mod_coord_list = doit(coord_data, raster_file_path)
+    for i in filelist:
+        for j in mod_coord_list:
+            nn = (str(i), j[0], j[1], j[2], j[3], j[4])
+            parallal_args.append(nn)
+    return parallal_args
+
+
+
 if __name__ == "__main__":
-    doit(coord_data, raster_file_path)
-    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    
+    parallal_args = process_tuples(raster_file_path, coord_data)
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     #pool = multiprocessing.Pool(processes=1)
-    #pool.map(doit(coord_data, raster_file_path))
-    #pool.close()
-    #pool.join()
-    #print 'Using ' +str(multiprocessing.cpu_count())+' cores.'
-
-
-# figure out how long the script took to run
-endTime = time.time()
-print 'The script took ' + str(endTime - startTime) + ' seconds'
+    output_seq = pool.map(job_helper, parallal_args)
+    pool.close()
+    pool.join()
+    write_output(out_file, output_seq)
+    print 'Using ' +str(multiprocessing.cpu_count())+' cores.'
+    endTime = time.time()
+    print 'The script took ' + str(endTime - startTime) + ' seconds'
