@@ -1,0 +1,213 @@
+#!/usr/bin/python
+
+# Author Riazuddin Kawsar
+# email: r.kawsar@spatial-business-integration
+# date: 28th july 2015
+
+# Read the MODIS MODQ1 derived NDVI data and interpolate the missing pixels
+# and smooths the data by executing time series smoothing function.
+# the script is designed for multi processing
+# The script took 34.1644911766 seconds with 12 cores
+# # The script took 189.240346909 seconds with 1 cores
+
+
+import os, sys, time, gdal, fnmatch
+import glob, numpy, csv
+from osgeo import osr
+from gdalconst import *
+import pylab as plt
+from scipy import interpolate
+from scipy.optimize import fmin
+import pylab as plt
+import multiprocessing
+#from savitzky_golay import *
+
+
+startTime = time.time()
+# input parameters -------------------------------------------------------------------------------------
+
+input_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/test'
+out_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/test'
+fillval = 255.0
+
+# -----------------------------------------------------------------------------------------------------
+
+def find_files(input_dir, pattern):
+    toprocess = []
+    for root,dir,files in os.walk(input_dir):
+        for name in sorted(files):
+            if fnmatch.fnmatch(name, pattern):
+                toprocess.append( os.path.join(root, name))
+    return toprocess
+
+def return_band(image_file_name, band_number):
+    image = image_file_name
+    dataset = gdal.Open(image,GA_ReadOnly)
+    if dataset is None:
+        print "Could not open " + dataset
+        sys.exit(1)
+    geoTransform = dataset.GetGeoTransform()
+    proj = dataset.GetProjection()
+    rasterband = dataset.GetRasterBand(band_number)
+    ncol = dataset.RasterXSize
+    nrow = dataset.RasterYSize
+    band = rasterband.ReadAsArray(0,0,ncol,nrow)
+    band = band.astype(numpy.float32)
+    return band,geoTransform,proj,ncol,nrow
+    dataset = None
+    band = None
+
+def output_file(output_name,output_array,geoTransform,proj,ncol,nrow):
+    driver = gdal.GetDriverByName("GTiff")
+    outDataset = driver.Create(output_name,ncol,nrow,1,GDT_Float32)
+    outBand = outDataset.GetRasterBand(1)
+    outBand.WriteArray(output_array,0,0)
+    outBand.FlushCache()
+    outBand.SetNoDataValue(fillval)
+    outDataset.SetGeoTransform(geoTransform )
+    outDataset.SetProjection(proj)
+
+def create_image_stack(image_list):
+    data_fields = {'ndvi_raw':[], 'img_date':[], 'ndvi_inter':[]}
+    ndvi_stack = {'filenames':numpy.sort(image_list)}
+    ndvi_stack.update(data_fields)
+
+    print 'appending multi temporal Images ...' 
+    for files in numpy.sort(ndvi_stack['filenames']):
+        img_date = files.split('/')[-1].split('.')[1]
+        img_date = img_date.replace('A','')
+        ndvi,geoTransform,proj,ncol,nrow = return_band(files, 1)
+        ndvi_stack['ndvi_raw'].append(ndvi)
+        ndvi_stack['img_date'].append(img_date)
+        
+    for layer in ndvi_stack.keys():
+        if layer == 'ndvi_raw':
+            ndvi_stack[layer] = numpy.array(ndvi_stack[layer])
+
+    nlayer = ndvi_stack['ndvi_raw'].shape[0]
+    nrow = ndvi_stack['ndvi_raw'].shape[1]
+    ncol = ndvi_stack['ndvi_raw'].shape[2]
+    
+    for i in range(0, nlayer):
+        empty_image = numpy.zeros((nrow, ncol))
+        ndvi_stack['ndvi_inter'].append(empty_image)
+    
+    for layer in ndvi_stack.keys():
+        if layer == 'ndvi_inter':
+            ndvi_stack[layer] = numpy.array(ndvi_stack[layer])
+
+    return ndvi_stack
+
+
+def extract_ndvi_time_series(ndvi_stack,row_index,col_index):
+    nlayer = ndvi_stack['ndvi_raw'].shape[0]
+    pixel_ndvi_ts = []
+    for i in range(0, nlayer):
+        img_date = ndvi_stack['img_date'][i]
+        year = img_date[0:4]
+        doy_i = img_date[4:7]
+        doy_i = int(doy_i)
+        ndvi_i = ndvi_stack['ndvi_raw'][i,row_index,col_index]
+        xx = [doy_i, ndvi_i]
+        pixel_ndvi_ts.append(xx)
+    return pixel_ndvi_ts
+
+
+def interpolate_time_series(ts):
+    ts_without_nan = []
+    for i in ts:
+        if i[1] != 255.0 and i[1] > 0.01:
+            data =  [i[0], i[1]]
+            ts_without_nan.append(data)
+
+    if ts_without_nan == []:
+        out_ts = []
+        for i in ts:
+            out_ts.append([i[0], i[1], 255.0])
+        return out_ts
+    else:
+        data = numpy.asarray(ts_without_nan)
+        x = data[:,0] # doy
+        max_doy = max(x)
+        y = data[:,1] # ndvi
+        y = numpy.tile(y,3)
+        
+        # extend: using vstack to stack 3 different arrays
+        x = numpy.hstack((x-46*8,x,x+46*8))
+        f = interpolate.interp1d(x, y, kind='linear', bounds_error=False) # linear, cubic
+        xnew = numpy.arange(1.,366.)
+        ynew = f(xnew)
+        
+        # a simple box smoothing filter (filter width 15)
+        w = numpy.ones(15)
+        w = w/w.sum() # normalise
+        n = len(w)/2 # half width
+        
+        x = xnew
+        y = f(x)
+        z = numpy.zeros_like(y)
+        
+        # This is a straight implementation of the equation above
+        for j in xrange(n,len(y)-n):
+            for i in xrange(-n,n+1):
+                z[j] += w[n+i] * y[j+i]
+                
+        # here y is the predicted NDVI and z is the predicted and spmmothed NDVI
+        interim_ts = []
+        xnew_doy = numpy.arange(46)*8+1 # create a doy list with a 8-day intarval
+        for i in range(len(x)):
+            if x[i] in xnew_doy and x[i] <= max_doy:
+                nn = [x[i], z[i]]
+                interim_ts.append(nn)
+                
+        out_ts = []
+        for i in ts:
+            for j in interim_ts:
+                if i[0] == j[0]:
+                    out_ts.append([i[0], i[1], j[1]])
+                    
+        return out_ts
+
+
+def parallal_interpolation(pixel):
+    pixel_ndvi_ts = extract_ndvi_time_series(ndvi_stack,pixel[0],pixel[1]) # [row, col]
+    out_ts = interpolate_time_series(pixel_ndvi_ts)
+    for k in range(len(out_ts)):
+        ndvi_stack['ndvi_inter'][k][pixel[0]][pixel[1]] = out_ts[k][2]
+    #return ndvi_stack
+
+
+if __name__ == '__main__':
+
+    image_list = find_files(input_dir, '*clip.tif')
+    ndvi,geoTransform,proj,ncol,nrow = return_band(image_list[0], 1)
+    ndvi_stack = create_image_stack(image_list)
+    nlayer = ndvi_stack['ndvi_raw'].shape[0]
+    nrow = ndvi_stack['ndvi_raw'].shape[1]
+    ncol = ndvi_stack['ndvi_raw'].shape[2]
+    print 'Dimension of the Stack ' +  str(nlayer) + ',' +  str(nrow) + ',' + str(ncol)
+
+    pixel_list = []
+    print 'Preparing the pixel index ....'
+    for i in range(nrow):
+            for j in range(ncol):
+                pixel = [i,j]
+                pixel_list.append(pixel)
+
+    print 'Executing interpolation ....'
+    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(processes=1)
+    pool.map(parallal_interpolation,pixel_list)
+    pool.close()
+    pool.join()
+
+    print 'writing interpolated rasters ......'
+    for i in range(0, nlayer):
+        img_date = ndvi_stack['img_date'][i]
+        out_file = os.path.join(out_dir, img_date + '.tif')
+        image_array = ndvi_stack['ndvi_inter'][i]
+        output_file(out_file,image_array,geoTransform,proj,ncol,nrow)
+
+    endTime = time.time()
+    print '\n\nThe script took ' +str(endTime - startTime)+ ' seconds'
+    
