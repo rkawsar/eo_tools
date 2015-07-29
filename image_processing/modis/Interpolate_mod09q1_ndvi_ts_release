@@ -15,7 +15,6 @@ import os, sys, time, gdal, fnmatch
 import glob, numpy, csv
 from osgeo import osr
 from gdalconst import *
-import pylab as plt
 from scipy import interpolate
 from scipy.optimize import fmin
 import pylab as plt
@@ -88,14 +87,6 @@ def create_image_stack(image_list):
     nlayer = ndvi_stack['ndvi_raw'].shape[0]
     nrow = ndvi_stack['ndvi_raw'].shape[1]
     ncol = ndvi_stack['ndvi_raw'].shape[2]
-    
-    for i in range(0, nlayer):
-        empty_image = numpy.zeros((nrow, ncol))
-        ndvi_stack['ndvi_inter'].append(empty_image)
-    
-    for layer in ndvi_stack.keys():
-        if layer == 'ndvi_inter':
-            ndvi_stack[layer] = numpy.array(ndvi_stack[layer])
 
     return ndvi_stack
 
@@ -177,7 +168,6 @@ def parallal_interpolation(pixel):
     for k in range(len(out_ts)):
         x = [k, pixel[0], pixel[1], out_ts[k][2]] # layer,row, col, value
         xx.append(x)
-        #ndvi_stack['ndvi_inter'][k][pixel[0]][pixel[1]] += out_ts[k][2]
     return xx
 
 
@@ -205,6 +195,14 @@ if __name__ == '__main__':
     pool.close()
     pool.join()
 
+    for i in range(0, nlayer):
+        empty_image = numpy.zeros((nrow, ncol))
+        ndvi_stack['ndvi_inter'].append(empty_image)
+    
+    for layer in ndvi_stack.keys():
+        if layer == 'ndvi_inter':
+            ndvi_stack[layer] = numpy.array(ndvi_stack[layer])
+
     # counting total number of records in space and time
     ts_length = 0.0
     pix_length = 0.0
@@ -218,7 +216,6 @@ if __name__ == '__main__':
     print "populating Dictionary with interpolated Value ... "
     for i in xx:
         for j in i:
-            # e.g., i = [21, 35, 122, 0.7879580557346344]
             layer = j[0]
             layer = j[0]
             row = j[1]
@@ -229,11 +226,9 @@ if __name__ == '__main__':
     print 'writing interpolated rasters ......'
     for i in range(0, nlayer):
         img_date = ndvi_stack['img_date'][i]
-        out_file = os.path.join(out_dir, img_date + '.tif')
+        out_file = os.path.join(out_dir, 'MOD09Q1.A' + img_date + '.ndvi_bb_clip_inter.tif')
         image_array = ndvi_stack['ndvi_inter'][i]
         output_file(out_file,image_array,geoTransform,proj,ncol,nrow)
 
     endTime = time.time()
     print '\n\nThe script took ' +str(endTime - startTime)+ ' seconds'
- 
-
