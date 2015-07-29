@@ -20,14 +20,15 @@ from scipy import interpolate
 from scipy.optimize import fmin
 import pylab as plt
 import multiprocessing
+import collections
 #from savitzky_golay import *
 
 
 startTime = time.time()
 # input parameters -------------------------------------------------------------------------------------
 
-input_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/test'
-out_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/test'
+input_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/2015'
+out_dir = '/media/Arc/eo_archive_proc/MOD09Q1/output/Germany/ndvi/2015'
 fillval = 255.0
 
 # -----------------------------------------------------------------------------------------------------
@@ -63,7 +64,7 @@ def output_file(output_name,output_array,geoTransform,proj,ncol,nrow):
     outBand = outDataset.GetRasterBand(1)
     outBand.WriteArray(output_array,0,0)
     outBand.FlushCache()
-    outBand.SetNoDataValue(fillval)
+    #outBand.SetNoDataValue(fillval)
     outDataset.SetGeoTransform(geoTransform )
     outDataset.SetProjection(proj)
 
@@ -72,7 +73,7 @@ def create_image_stack(image_list):
     ndvi_stack = {'filenames':numpy.sort(image_list)}
     ndvi_stack.update(data_fields)
 
-    print 'appending multi temporal Images ...' 
+    print 'Appending multi temporal Images ...' 
     for files in numpy.sort(ndvi_stack['filenames']):
         img_date = files.split('/')[-1].split('.')[1]
         img_date = img_date.replace('A','')
@@ -170,11 +171,14 @@ def interpolate_time_series(ts):
 
 
 def parallal_interpolation(pixel):
+    xx = []
     pixel_ndvi_ts = extract_ndvi_time_series(ndvi_stack,pixel[0],pixel[1]) # [row, col]
     out_ts = interpolate_time_series(pixel_ndvi_ts)
     for k in range(len(out_ts)):
-        ndvi_stack['ndvi_inter'][k][pixel[0]][pixel[1]] = out_ts[k][2]
-    #return ndvi_stack
+        x = [k, pixel[0], pixel[1], out_ts[k][2]] # layer,row, col, value
+        xx.append(x)
+        #ndvi_stack['ndvi_inter'][k][pixel[0]][pixel[1]] += out_ts[k][2]
+    return xx
 
 
 if __name__ == '__main__':
@@ -185,7 +189,7 @@ if __name__ == '__main__':
     nlayer = ndvi_stack['ndvi_raw'].shape[0]
     nrow = ndvi_stack['ndvi_raw'].shape[1]
     ncol = ndvi_stack['ndvi_raw'].shape[2]
-    print 'Dimension of the Stack ' +  str(nlayer) + ',' +  str(nrow) + ',' + str(ncol)
+    print 'Dimension of the Stack : ' +  str(nlayer) + ',' +  str(nrow) + ',' + str(ncol)
 
     pixel_list = []
     print 'Preparing the pixel index ....'
@@ -195,11 +199,32 @@ if __name__ == '__main__':
                 pixel_list.append(pixel)
 
     print 'Executing interpolation ....'
-    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-    pool = multiprocessing.Pool(processes=1)
-    pool.map(parallal_interpolation,pixel_list)
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    #pool = multiprocessing.Pool(processes=1)
+    xx = pool.map(parallal_interpolation,pixel_list)
     pool.close()
     pool.join()
+
+    # counting total number of records in space and time
+    ts_length = 0.0
+    pix_length = 0.0
+    for i in xx:
+        ts_length += len(i)
+        for j in i:
+            pix_length += len(i)
+    total_records = ts_length * ts_length
+    print 'total number of records in space and time are : ' + str(total_records)
+    
+    print "populating Dictionary with interpolated Value ... "
+    for i in xx:
+        for j in i:
+            # e.g., i = [21, 35, 122, 0.7879580557346344]
+            layer = j[0]
+            layer = j[0]
+            row = j[1]
+            col = j[2]
+            value = j[3]
+            ndvi_stack['ndvi_inter'][layer][row][col] = value
 
     print 'writing interpolated rasters ......'
     for i in range(0, nlayer):
@@ -210,4 +235,5 @@ if __name__ == '__main__':
 
     endTime = time.time()
     print '\n\nThe script took ' +str(endTime - startTime)+ ' seconds'
-    
+ 
+
