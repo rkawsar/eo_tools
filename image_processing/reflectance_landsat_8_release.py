@@ -1,6 +1,11 @@
+#!/usr/bin/python
+
+# Landsat 8 TOA reflactance and brightness temparature calculation
+# Author Riazuddin Kawsar
+# email: r.kawsar@spatial-business-integration
+# date: 30th july 2015
 
 
-# owner: r.kawsar@spatial-business-integration.com
 # Landsat 8 bands
 #---------------------------------------------------------
 #Band 1 - Coastal aerosol 	0.43 - 0.45 	30
@@ -19,6 +24,8 @@
 # reflectance algorithm source: http://landsat.usgs.gov/Landsat8_Using_Product.php
 
 
+
+
 import xml.dom.minidom as minidom
 from collections import defaultdict
 import csv
@@ -34,17 +41,12 @@ import matplotlib.pylab as plt
 # input variables ---- user input ----
 
 sensor_type = 'landsat_8' 
-data_folder = 'LC81660462014164LGN00'
-
-
-
-
+data_folder = 'LC81970302014029LGN00'
 
 
 min_ndvi= 0.01
 max_ndvi = 1.0
-fillval = 255
-
+fillval = 9999
 
 # input files (automatically generated)
 wrd_dir = '/media/Num/wrk_dir/landsat'
@@ -56,29 +58,22 @@ for meta_file in glob.glob('*_MTL.txt'):
     print 'metadata_file: ' + metadata_file
 
 
-# creating the product name and output dir (automatically generated)
-product = 'binned_' + data_folder
-output_dir = os.path.join(data_dir, product)
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+# Quality pixel flag ( from Landsat 8 Quality Assessment band)
+#BQF = [61440,59424,57344,56320,53248,39936,36896,36864,
+#       31744,28672,28590,26656,24576,23552,20516,20512,20480]
 
-
-
+BQF = [1, 61440,59424,57344,56320,53248,39936,36896,36864]
 
 #---------------------------- collecting all the necessary input files -------------------
 # ----------------------------------------------------------------------------------------
 
-
-# find files store all the *.tif file PATH in a list which to be processed.
 def findfiles(input_dir, file_type):  # file_type = '*.tif'
-    toprocess = []  # list to store paths for processing in
+    toprocess = []
     for root,dir,files in os.walk(input_dir):
         for name in sorted(files):
             if fnmatch.fnmatch(name,file_type): 
                 toprocess.append( os.path.join(root, name) )
     return toprocess
-
-
 
 
 # finding different bands for calculation
@@ -87,52 +82,32 @@ for raster_files in findfiles(data_dir, '*.TIF'):
     raster_name = os.path.basename(raster_path)
     band_name = raster_name.split('_', 1)[1]
     band_name = band_name.split('.', 1)[0]
-
     if band_name == 'B1':
         Band_B1 = raster_path
-        print 'Band_B1 = ' + Band_B1
-
     if band_name == 'B2':
         Band_B2 = raster_path
-        print 'Band_B2 = ' + Band_B2
-
     if band_name == 'B3':
         Band_B3 = raster_path
-        print 'Band_B3 = ' + Band_B3
-
     if band_name == 'B4':
         Band_B4 = raster_path
-        print 'Band_B4 = ' + Band_B4
-
     if band_name == 'B5':
         Band_B5 = raster_path
-        print 'Band_B5 = ' + Band_B5
-
     if band_name == 'B6':
         Band_B6 = raster_path
-        print 'Band_B6 = ' + Band_B6
-
     if band_name == 'B7':
         Band_B7 = raster_path
-        print 'Band_B7 = ' + Band_B7
-
     if band_name == 'B10':
         Band_B10 = raster_path
-        print 'Band_B10 = ' + Band_B10
-
     if band_name == 'B11':
         Band_B11 = raster_path
-        print 'Band_B11 = ' + Band_B11
-
-
-
+    if band_name == 'BQA':
+        Band_BQA = raster_path
+        print 'Band_BQA = ' + Band_BQA 
 
 
 
 ####### extracting metadata ---------------------------
 #------------------------------------------------------
-
-
 # function to read the metadata (works for landsat MTL and Digitalglobe IMD metadata)
 def read_metadata(f):
     lines=iter(open(f).readlines())
@@ -170,35 +145,23 @@ def read_metadata(f):
     return hdrdata
 
 
-
-
 # reading the metadata in a dictionary
 imddata = read_metadata (metadata_file)
 
 
-
 def acquireMetadata(band):
-    
     ref_MRF = float(imddata['RADIOMETRIC_RESCALING']['REFLECTANCE_MULT_BAND_' + str(band)])
     ref_AMF = float(imddata['RADIOMETRIC_RESCALING']['REFLECTANCE_ADD_BAND_' + str(band)])
-
     metadatalist = [0, 0, ref_MRF, ref_AMF]
-    
     return metadatalist
 
-
 def acquireThrmalMetadata(band):
-
     radi_MRF = float(imddata['RADIOMETRIC_RESCALING']['RADIANCE_MULT_BAND_' + str(band)])
-    radi_AMF = float(imddata['RADIOMETRIC_RESCALING']['RADIANCE_ADD_BAND_' + str(band)])
-    
+    radi_AMF = float(imddata['RADIOMETRIC_RESCALING']['RADIANCE_ADD_BAND_' + str(band)])  
     K1 = float(imddata['TIRS_THERMAL_CONSTANTS']['K1_CONSTANT_BAND_' + str(band)])
     K2 = float(imddata['TIRS_THERMAL_CONSTANTS']['K2_CONSTANT_BAND_' + str(band)])
-    
     acquireThrmalMetadata = [radi_MRF, radi_AMF, K1, K2]
-    
     return acquireThrmalMetadata
-
 
 
 SunElevation  = float(imddata['IMAGE_ATTRIBUTES']['SUN_ELEVATION'])
@@ -208,10 +171,25 @@ solar_zenith_angle = float(90.00) - SunElevation
 solar_zenith_angle_radians = math.radians(solar_zenith_angle)
 SunElevation_radians = math.radians(SunElevation)
 
-
 print 'Acquisition date : ' + img_date
 print 'Acquisition time : ' + img_time
 print 'SunElevation :' + str(SunElevation)
+
+
+# creating the product name and output dir
+year = img_date.split('-', 1)[0]
+month = img_date.split('-', 1)[1]
+month = month.split('-', 1)[0]
+day = img_date.split('-', 1)[1]
+day = day.split('-', 1)[1]
+
+product_date = day + '.' + month + '.' +  year[2:4]
+product = 'binned_' + product_date
+output_dir = os.path.join (data_dir, product)
+print output_dir
+
+if not os.path.exists(output_dir):
+   os.makedirs(output_dir)
 
 
 
@@ -235,7 +213,6 @@ def return_band(image_file_name, band_number):
     nrow = dataset.RasterYSize
     band = rasterband.ReadAsArray(0,0,ncol,nrow)
     band = band.astype(numpy.uint16)
-    
     return band,geoTransform,proj,ncol,nrow
     dataset = None
     band = None
@@ -271,108 +248,81 @@ def normalize(band1,band2):
     return ndvi
 
 
-
-
 # reading DN bands, extracting metadata and calculating radiance and reflactance and writing it to the folder
 # i.e, band_name = B1
 def calculate_reflectance(band_name, solar_zenith_angle_radians, DN, output_dir):
-    
     img_name = 'Band_' + band_name
-
-    print 'reading....' +  img_name
-
-    print 'extracting the band metadata...'
     band_metadata = acquireMetadata (band_name[1:])
     ref_MRF = float(band_metadata[2])
     ref_AMF = float(band_metadata[3])
-    print ref_MRF, ref_AMF
-
-    print 'calculating reflactance...'
+    print 'calculating ' + band_name + ' reflactance...'
     reflectance = (ref_MRF * DN + ref_AMF) / (math.cos(solar_zenith_angle_radians))
-
     reflectance_name = product_output_name(data_dir,product,band_name)
-    
-    print 'Writing output...'
+    print 'Masking with Quality flag...'
+    band_BQA,geoTransform,proj,ncol,nrow  = return_band(Band_BQA,1)
+    for i in BQF:
+        qc = numpy.where(band_BQA==i,1,0)
+        numpy.putmask(reflectance, qc, fillval)
     output_file(reflectance_name,reflectance,geoTransform,proj,ncol,nrow)
-    print reflectance_name
-
     reflactance = None
-
-
+    band_BQA = None
 
 
 # calculating the ndvi
 def calculate_ndvi(solar_zenith_angle_radians, red, nir, output_dir):
-    
     print 'reading RED band....'
-
-    print 'extracting the band metadata...'
     band_metadata_B4 = acquireMetadata(4)
     ref_MRF_B4 = float(band_metadata_B4[2])
     ref_AMF_B4 = float(band_metadata_B4[3])
-
     print 'calculating reflactance...'
     reflectance_B4 = (ref_MRF_B4 * Band_B4 + ref_AMF_B4) / (math.cos(solar_zenith_angle_radians))
-
     print 'reading NIR band....'
-    
-    print 'extracting the band metadata...'
     band_metadata_B5 = acquireMetadata(5)
     ref_MRF_B5 = float(band_metadata_B5[2])
     ref_AMF_B5 = float(band_metadata_B5[3])
-
     print 'calculating reflactance...'
     reflectance_B5 = (ref_MRF_B5 * Band_B5 + ref_AMF_B5) / (math.cos(solar_zenith_angle_radians))
-
-
     ndvi_name = product_output_name(data_dir,product,'ndvi')
-
-
-    print "processing ndvi...."
+    print "Calculating ndvi...."
     ndvi = normalize(reflectance_B5, reflectance_B4)
     min_ndvi_mask = numpy.where(ndvi < min_ndvi, 1, 0)
     max_ndvi_mask = numpy.where(ndvi > max_ndvi, 1, 0)
-
     numpy.putmask(ndvi, min_ndvi_mask, min_ndvi)
     numpy.putmask(ndvi, max_ndvi_mask, max_ndvi)
-
+    #print 'Masking with Quality flag...'
+    band_BQA,geoTransform,proj,ncol,nrow  = return_band(Band_BQA,1)
+    for i in BQF:
+        qc = numpy.where(band_BQA==i,1,0)
+        numpy.putmask(ndvi, qc, fillval)
     output_file(ndvi_name,ndvi,geoTransform,proj,ncol,nrow)
-
     reflectance_B4 = None
     reflectance_B5 = None
     mdvi = None
-
-
+    band_BQA = None
 
 
 # Conversion to At-Satellite Brightness Temperature (K)
 def calculate_brightness_temperature(band_name, solar_zenith_angle_radians, DN, output_dir):
-    
+
     img_name = 'Band_' + band_name
-
     print 'reading....' +  img_name
-
-    print 'extracting the band metadata...'
     band_metadata = acquireThrmalMetadata (band_name[1:])
     radi_MRF = float(band_metadata[0])
     radi_AMF = float(band_metadata[1])
     K1 = float(band_metadata[2])
     K2 = float(band_metadata[3])
-
-    print radi_MRF, radi_AMF, K1, K2
-
     print 'calculating Radiance...'
     radiance = (DN * radi_MRF) + radi_AMF
-
-    print 'Satellite Brightness Temperature...'
+    print 'calculating Satellite Brightness Temperature...'
     TB = K2 / (numpy.log((K1 / radiance) +1))
-
+    print 'Masking with Quality flag...'
+    band_BQA,geoTransform,proj,ncol,nrow  = return_band(Band_BQA,1)
+    for i in BQF:
+        qc = numpy.where(band_BQA==i,1,0)
+        numpy.putmask(TB, qc, fillval)
+    print 'writing output...'
     reflectance_name = product_output_name(data_dir,product,band_name)
-    
-    print 'Writing output...'
     output_file(reflectance_name,TB,geoTransform,proj,ncol,nrow)
-    print reflectance_name
-
     radiance = None
 
 
@@ -417,3 +367,8 @@ if __name__ == "__main__":
     Band_B11,geoTransform,proj,ncol,nrow  = return_band(Band_B11,1)
     calculate_brightness_temperature('B11', solar_zenith_angle_radians, Band_B11, output_dir)
     Band_B11 = None
+
+    print 'GAME OVER .... '
+
+
+
